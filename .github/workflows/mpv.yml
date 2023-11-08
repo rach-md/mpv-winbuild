@@ -7,14 +7,10 @@ on:
       build_target:
         description: "Build target"
         required: false
-        default: "all-64bit"
+        default: "64bit"
         type: choice
         options:
-        - 32bit
         - 64bit
-        - 64bit-v3
-        - all-64bit
-        - all
       compiler:
         required: false
         default: "clang"
@@ -69,23 +65,8 @@ jobs:
             let matrix = {};
             let build_target = "${{ inputs.build_target }}"
             switch ( build_target ) {
-              case "32bit":
-                matrix.bit = ["32"];
-                break;
               case "64bit":
                 matrix.bit = ["64"];
-                break;
-              case "64bit-v3":
-                matrix.bit = ["64-v3"];
-                break;
-              case "all-64bit":
-                matrix.bit = ["64","64-v3"];
-                break;
-              case "all":
-                matrix.bit = ["32","64","64-v3"];
-                break;
-              default:
-                matrix.bit = ["64","64-v3"];
                 break;
             }
             core.setOutput("matrix",JSON.stringify(matrix));
@@ -177,7 +158,7 @@ jobs:
       - name: Checkout toolchain
         uses: actions/checkout@v4
         with:
-          repository: shinchiro/mpv-winbuild-cmake
+          repository: rach-md/mpv-winbuild-cmake
           path: mpv-winbuild-cmake
       - name: Get Params
         run: |

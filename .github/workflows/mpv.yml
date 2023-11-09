@@ -28,11 +28,6 @@ on:
         required: false
         default: false
         type: boolean
-      release:
-        description: "Publish a release"
-        required: false
-        default: false
-        type: boolean
       command:
         description: 'input command you want to run before build'
         required: false

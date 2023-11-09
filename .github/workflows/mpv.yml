@@ -366,7 +366,7 @@ jobs:
         with:
           script: |
             const path = require('path');
-            const types = ["mpv-debug", "mpv-dev", "mpv"];
+            const types = ["mpv"];
             let arch="";
             switch ( "${{ matrix.bit }}" ) {
               case "32":
@@ -389,12 +389,6 @@ jobs:
               }
             }
 
-      - name: upload mpv-debug
-        uses: actions/upload-artifact@v3
-        if: ${{ env.mpv-debug_name && env.mpv-debug_path }}
-        with:
-          name: ${{ env.mpv-debug_name }}
-          path: ${{ env.mpv-debug_path }}
       - name: upload mpv
         uses: actions/upload-artifact@v3
         if: ${{ env.mpv_name && env.mpv_path }}

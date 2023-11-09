@@ -395,12 +395,6 @@ jobs:
         with:
           name: ${{ env.mpv-debug_name }}
           path: ${{ env.mpv-debug_path }}
-      - name: upload mpv-dev
-        uses: actions/upload-artifact@v3
-        if: ${{ env.mpv-dev_name && env.mpv-dev_path }}
-        with:
-          name: ${{ env.mpv-dev_name }}
-          path: ${{ env.mpv-dev_path }}
       - name: upload mpv
         uses: actions/upload-artifact@v3
         if: ${{ env.mpv_name && env.mpv_path }}

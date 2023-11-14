@@ -388,14 +388,6 @@ jobs:
                 core.exportVariable( `${type}_path`, file );
               }
             }
-            
-            let { stdout: ffmpeg_hash } = await exec.getExecOutput("git -C mpv-winbuild-cmake/src_packages/ffmpeg rev-parse --short HEAD");
-            ffmpeg_hash = ffmpeg_hash.trim();
-            const ffmpeg_name = `ffmpeg-${arch}-git-${ffmpeg_hash}`;
-            core.exportVariable( 'ffmpeg_name', ffmpeg_name );
-            const globber = await glob.create(`./mpv-winbuild-cmake/build${{ matrix.bit }}/**/ffmpeg.exe`);
-            const ffmpeg_path = (await globber.glob())[0]
-            await exec.exec(`7z a -m0=lzma2 -mx=9 -ms=on mpv-winbuild-cmake/release/${ffmpeg_name}.7z ${ffmpeg_path}`)
 
       - name: upload mpv-debug
         uses: actions/upload-artifact@v3
@@ -415,13 +407,6 @@ jobs:
         with:
           name: ${{ env.mpv_name }}
           path: ${{ env.mpv_path }}
-          
-      - name: upload ffmpeg
-        uses: actions/upload-artifact@v3
-        if: ${{ env.ffmpeg_name }}
-        with:
-          name: ${{ env.ffmpeg_name }}
-          path: mpv-winbuild-cmake/release/${{ env.ffmpeg_name }}.7z
 
       - name: Save clang sysroot cache
         if: ${{ inputs.compiler =='clang' && inputs.no_save_cache != true }}
@@ -533,107 +518,3 @@ jobs:
             summary.addHeading('Packages Version')
               .addTable(packages_table)
               .write();
-
-  publish_release:
-    name: Publish release
-    needs: [build_mpv,params]
-    if: ${{ inputs.release == true }}
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Download artifacts
-        uses: actions/download-artifact@v3
-        with:
-          path: artifacts
-    
-      - name: "Check artifacts"
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const globber = await glob.create(`artifacts/*/mpv*.7z`);
-            const files = await globber.glob();
-            if ( files.length == 0 ) {
-              core.setFailed("Artifact does not exist!");
-            }
-
-      - name: Get current time
-        run: |
-          echo "long_time=$(date "+%Y-%m-%d %H:%M")" >> $GITHUB_ENV
-          echo "short_time=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
-          echo "tag_name=$(date "+%Y-%m-%d")-$(head -c 7 <<< "${{needs.params.outputs.sha}}")"  >> $GITHUB_ENV
-
-      - name: Commit version & remove existing tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ env.tag_name }}
-        shell: bash
-        run: |
-          git fetch --tags
-          git checkout version || git checkout -b version origin/version || ( git checkout --orphan version && git rm -rf . )
-          echo -e "${tag_name}" > version
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add version
-          git diff-index --quiet HEAD || ( git commit -m "${tag_name}" && git push origin version )
-          if [ $(git tag -l "${tag_name}") ] ;then
-            gh release delete "${tag_name}" || true
-            git push --delete origin "${tag_name}" || true
-            git tag -d "${tag_name}" || true
-          fi
-          git checkout main
-
-      - name: "Generate release note & sha256"
-        id: note
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const sha = `${{ needs.params.outputs.sha }}`;
-            let note = `**MPV Git commit**: https://github.com/mpv-player/mpv/commit/${sha}\n`;
-            note+="**Build Time**: ${{ env.long_time }}\n";
-            note+="**Compiler**: ${{ inputs.compiler }}\n";
-            note+="**Build Details**: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}\n";
-            const patch_note = `${{ needs.params.outputs.patch_note }}` ;
-            if (patch_note) {
-              note+=`Merged Prs:\n${patch_note}\n`;
-            }
-            note+="**Downloads**: ![downloads](https://badgen.net/github/assets-dl/${{github.repository}}/${{ env.tag_name }}?cache=300)";
-            core.setOutput("note",note);
-
-            const os = require('os'); 
-            const { basename } = require('path');
-            const { createHash } = require('crypto');
-            const { readFileSync,writeFileSync } = require('fs');
-            const globber = await glob.create([`artifacts/*/mpv*.7z`,`artifacts/*/ffmpeg*.7z`].join('\n'));
-            const files = await globber.glob();
-            if ( files.length > 0 ) {
-              let sha256="";
-              for (let file of files) {
-                const buff = readFileSync(file);
-                const hash = createHash("sha256").update(buff).digest("hex");
-                sha256+=`${hash} ${basename(file)}${os.EOL}`;
-              }
-              writeFileSync('sha256.txt', sha256.trim(), { flag: 'w+' });
-            }
-
-      - name: Create release
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: "artifacts/*/mpv*.7z,artifacts/*/ffmpeg*.7z,sha256.txt"
-          commit: version
-          name: "${{ env.long_time }}"
-          body: "${{ steps.note.outputs.note }}"
-          tag: "${{ env.tag_name }}"
-          allowUpdates: true
-          artifactErrorsFailBuild: true
-          prerelease: false
-          makeLatest: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Prune old releases
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          git checkout main
-          bash prunetags.sh

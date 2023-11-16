@@ -10,34 +10,14 @@ main() {
     compiler=$2
 
     prepare
-    if [ "$target" == "32" ]; then
-        package "32" 
-    elif [ "$target" == "64" ]; then
-        package "64"
-    elif [ "$target" == "64-v3" ]; then
-        package "64-v3"
-    elif [ "$target" == "all-64" ]; then
-        package "64"
-        package "64-v3"
-    else [ "$target" == "all" ];
-        package "32"
-        package "64"
-        package "64-v3"
-    fi
+    package "64"
+    
     rm -rf ./release/mpv-packaging-master
 }
 
 package() {
     local bit=$1
-    if [ $bit == "32" ]; then
-        local arch="i686"
-    elif [ $bit == "64" ]; then
-        local arch="x86_64"
-    elif [ $bit == "64-v3" ]; then
-        local arch="x86_64"
-        local gcc_arch="-DGCC_ARCH=x86-64-v3"
-        local x86_64_level="-v3"
-    fi
+    local arch="x86_64"
 
     build $bit $arch $gcc_arch
     zip $bit $arch $x86_64_level
@@ -50,27 +30,20 @@ build() {
     local arch=$2
     local gcc_arch=$3
     
-    if [ "$compiler" == "clang" ]; then
-        clang_option=(-DLLVM_ENABLE_LTO=Thin -DCMAKE_INSTALL_PREFIX=$clang_root -DMINGW_INSTALL_PREFIX=$buildroot/build$bit/install/$arch-w64-mingw32)
-    fi
+    clang_option=(-DLLVM_ENABLE_LTO=Thin -DCMAKE_INSTALL_PREFIX=$clang_root -DMINGW_INSTALL_PREFIX=$buildroot/build$bit/install/$arch-w64-mingw32)
+
     cmake -DTARGET_ARCH=$arch-w64-mingw32 $gcc_arch -DCOMPILER_TOOLCHAIN=$compiler "${clang_option[@]}" -DALWAYS_REMOVE_BUILDFILES=ON -DSINGLE_SOURCE_LOCATION=$srcdir -G Ninja -H$gitdir -B$buildroot/build$bit
 
-    ninja -C $buildroot/build$bit {libzvbi,libopenmpt}-removeprefix || rm -rf $srcdir/{libzvbi,libopenmpt} || true
     ninja -C $buildroot/build$bit download || true
 
-    if [ "$compiler" == "gcc" ] && [ ! "$(ls -A $buildroot/build$bit/install/bin)" ]; then
-        ninja -C $buildroot/build$bit gcc
-    elif [ "$compiler" == "clang" ] && [ ! "$(ls -A $clang_root/bin)" ]; then
-        ninja -C $buildroot/build$bit llvm && ninja -C $buildroot/build$bit llvm-clang
-    fi
+    ninja -C $buildroot/build$bit llvm && ninja -C $buildroot/build$bit llvm-clang
 
     ninja -C $buildroot/build$bit update
     ninja -C $buildroot/build$bit mpv-fullclean
     
-    if [ "$compiler" == "clang" ]; then
-        clang_option+=('-DCLANG_FLAGS=-fdata-sections -ffunction-sections' '-DLLD_FLAGS=--gc-sections -Xlink=-opt:safeicf')
-        cmake -DTARGET_ARCH=$arch-w64-mingw32 $gcc_arch -DCOMPILER_TOOLCHAIN=$compiler "${clang_option[@]}" -DALWAYS_REMOVE_BUILDFILES=ON -DSINGLE_SOURCE_LOCATION=$srcdir -G Ninja -H$gitdir -B$buildroot/build$bit
-    fi
+    clang_option+=('-DCLANG_FLAGS=-fdata-sections -ffunction-sections' '-DLLD_FLAGS=--gc-sections -Xlink=-opt:safeicf')
+    cmake -DTARGET_ARCH=$arch-w64-mingw32 $gcc_arch -DCOMPILER_TOOLCHAIN=$compiler "${clang_option[@]}" -DALWAYS_REMOVE_BUILDFILES=ON -DSINGLE_SOURCE_LOCATION=$srcdir -G Ninja -H$gitdir -B$buildroot/build$bit
+
     ninja -C $buildroot/build$bit mpv
 
     if [ -d $buildroot/build$bit/mpv-$arch* ] ; then
@@ -102,10 +75,10 @@ zip() {
 }
 
 download_mpv_package() {
-    local package_url="https://codeload.github.com/zhongfly/mpv-packaging/zip/master"
+    local package_url="https://codeload.github.com/rach-md/mpv-packaging/zip/master"
     if [ -e mpv-packaging.zip ]; then
         echo "Package exists. Check if it is newer.."
-        remote_commit=$(git ls-remote https://github.com/zhongfly/mpv-packaging.git master | awk '{print $1;}')
+        remote_commit=$(git ls-remote https://github.com/rach-md/mpv-packaging.git master | awk '{print $1;}')
         local_commit=$(unzip -z mpv-packaging.zip | tail +2)
         if [ "$remote_commit" != "$local_commit" ]; then
             wget -qO mpv-packaging.zip $package_url
@@ -133,4 +106,4 @@ do
     esac
 done
 
-main "${target:-all-64}" "${compiler:-gcc}"
+main "${target:-64}" "${compiler:-clang}"

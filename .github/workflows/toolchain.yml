@@ -12,17 +12,14 @@ on:
         default: "64bit"
         type: choice
         options:
-        - 32bit
         - 64bit
         - 64bit-v3
         - all-64bit
-        - all
       compiler:
         required: false
         default: "clang"
         type: choice
         options:
-        - gcc
         - clang
       no_save_cache:
         description: "Don't save caches after success build"
@@ -64,6 +61,15 @@ jobs:
             switch ( build_target ) {
               case "64bit":
                 matrix.bit = ["64"];
+                break;
+              case "64bit-v3":
+                matrix.bit = ["64-v3"];
+                break;
+              case "all-64bit":
+                matrix.bit = ["64","64-v3"];
+                break;
+              default:
+                matrix.bit = ["64","64-v3"];
                 break;
             }
             core.setOutput("matrix",JSON.stringify(matrix));
@@ -204,7 +210,14 @@ jobs:
           clang_root=$(pwd)/clang_root
           buildroot=$(pwd)
           srcdir=$(pwd)/src_packages
-          arch="x86_64"
+          
+          if [ $bit == "64" ]; then
+              arch="x86_64"
+          elif [ $bit == "64-v3" ]; then
+              arch="x86_64"
+              gcc_arch=-DGCC_ARCH=x86-64-v3
+              x86_64_level=-v3
+          fi
           set -x
           if [[ "$(ls -A ../patch/*.patch)" ]]; then
             for patch in ../patch/*.patch ; do
@@ -263,7 +276,7 @@ jobs:
           script: |
             let build_target=new Set();
             const release = ${{ inputs.release }};
-            const targets = {"build64":"64bit"}
+            const targets = {"build64-v3":"64bit-v3","build64":"64bit"}
             const repo="${{github.repository}}".split('/')[1];
             const cache_suffix="${{ needs.params.outputs.cache_suffix }}";
             const cache = await github.rest.actions.getActionsCacheList({

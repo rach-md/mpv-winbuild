@@ -1,4 +1,4 @@
-name: MPV
+name: mpv
 run-name: "${{ inputs.run_name != '' && format('{0} ({1})', inputs.run_name, inputs.compiler) || inputs.prs != '' && format('{0}[{2}] ({1})', github.workflow, inputs.compiler, inputs.prs) || format('{0} ({1})', github.workflow, inputs.compiler) }}"
 
 on: 
@@ -11,12 +11,13 @@ on:
         type: choice
         options:
         - 64bit
+        - 64bit-v3
+        - all-64bit
       compiler:
         required: false
         default: "clang"
         type: choice
         options:
-        - gcc
         - clang
       needclean:
         description: 'Build without cache'
@@ -59,7 +60,20 @@ jobs:
             
             let matrix = {};
             let build_target = "${{ inputs.build_target }}"
-            matrix.bit = ["64"];
+            switch ( build_target ) {
+              case "64bit":
+                matrix.bit = ["64"];
+                break;
+              case "64bit-v3":
+                matrix.bit = ["64-v3"];
+                break;
+              case "all-64bit":
+                matrix.bit = ["64","64-v3"];
+                break;
+              default:
+                matrix.bit = ["64","64-v3"];
+                break;
+            }
             core.setOutput("matrix",JSON.stringify(matrix));
 
             const fs = require('fs/promises');
@@ -121,7 +135,7 @@ jobs:
           path: "*.patch"
 
   build_mpv:
-    name: Build MPV
+    name: Build mpv
     needs: params
     runs-on: ubuntu-latest
     container:
@@ -297,7 +311,13 @@ jobs:
           buildroot=$(pwd)
           srcdir=$(pwd)/src_packages
           builddir=$buildroot/build$bit
-          arch="x86_64"
+          if [ $bit == "64" ]; then
+              arch="x86_64"
+          elif [ $bit == "64-v3" ]; then
+              arch="x86_64"
+              gcc_arch=-DGCC_ARCH=x86-64-v3
+              x86_64_level=-v3
+          fi
           retry-tool() {
             local RETRY_COUNTER=0
             local MAX_RETRY=3
@@ -343,7 +363,14 @@ jobs:
             const path = require('path');
             const type = "mpv";
             let arch="";
-            arch = "x86_64";
+            switch ( "${{ matrix.bit }}" ) {
+               case "64":
+                 arch = "x86_64";
+                 break;
+               case "64-v3":
+                 arch = "x86_64-v3";
+                 break;
+            }
             const globber = await glob.create(`mpv-winbuild-cmake/release/${type}-${arch}-*.7z`);
             const files = await globber.glob();
             if ( files.length > 0 ) {

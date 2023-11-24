@@ -10,8 +10,14 @@ main() {
     compiler=$2
 
     prepare
-    package "64"
-    
+    if [ "$target" == "64" ]; then
+        package "64"
+    elif [ "$target" == "64-v3" ]; then
+        package "64-v3"
+    elif [ "$target" == "all-64" ]; then
+        package "64"
+        package "64-v3"
+    fi
     rm -rf ./release/mpv-packaging-master
 }
 

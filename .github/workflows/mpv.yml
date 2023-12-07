@@ -171,6 +171,7 @@ jobs:
         with:
           repository: rach-md/mpv-winbuild-cmake
           path: mpv-winbuild-cmake
+          ref: build
       - name: Get Params
         run: |
           echo "sha=${{ needs.params.outputs.sha }}" >> $GITHUB_ENV

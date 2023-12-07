@@ -108,6 +108,7 @@ jobs:
         with:
           repository: rach-md/mpv-winbuild-cmake
           path: mpv-winbuild-cmake
+          ref: build
       - name: Build LLVM
         shell: bash
         run: |
@@ -189,6 +190,7 @@ jobs:
         with:
           repository: rach-md/mpv-winbuild-cmake
           path: mpv-winbuild-cmake
+          ref: build
 
       - name: Restore llvm cache
         if: ${{ inputs.compiler =='clang' }}

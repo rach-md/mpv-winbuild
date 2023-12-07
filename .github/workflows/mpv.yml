@@ -19,6 +19,7 @@ on:
         type: choice
         options:
         - clang
+        - gcc
       needclean:
         description: 'Build without cache'
         required: false

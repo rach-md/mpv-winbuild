@@ -23,7 +23,13 @@ main() {
 
 package() {
     local bit=$1
-    local arch="x86_64"
+    if [ $bit == "64" ]; then
+        local arch="x86_64"
+    elif [ $bit == "64-v3" ]; then
+        local arch="x86_64"
+        local gcc_arch="-DGCC_ARCH=x86-64-v3"
+        local x86_64_level="-v3"
+    fi
 
     build $bit $arch $gcc_arch
     zip $bit $arch $x86_64_level

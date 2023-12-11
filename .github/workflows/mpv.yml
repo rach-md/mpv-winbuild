@@ -145,7 +145,7 @@ jobs:
     needs: params
     runs-on: ubuntu-latest
     container:
-      image: cachyos/cachyos-v3:latest
+      image: archlinux/archlinux:base-devel
     continue-on-error: true
     strategy:
       matrix: ${{ fromJson(needs.params.outputs.matrix) }}
@@ -155,7 +155,7 @@ jobs:
         run: |
           sudo echo -e "[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
           sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed base-devel git gyp ninja cmake ragel yasm nasm asciidoc enca gperf unzip xz gcc-multilib clang lld libc++ libc++abi python-pip curl lib32-glib2 wget python-cairo mimalloc gtk-doc
+          sudo pacman -S --noconfirm --needed git gyp ninja cmake ragel yasm nasm asciidoc enca gperf unzip xz gcc-multilib clang lld libc++ libc++abi python-pip curl lib32-glib2 wget python-cairo gtk-doc
           mkdir -p /home/opt/7zip
           wget -qO - https://7-zip.org/a/7z2407-linux-x64.tar.xz | tar -xJf - -C /home/opt/7zip 7zzs
           sudo ln -s /home/opt/7zip/7zzs /usr/bin/7z
@@ -343,7 +343,6 @@ jobs:
         id: build
         shell: bash
         run: |
-          export LD_PRELOAD=/usr/lib/libmimalloc.so
           chmod +x build.sh
           cd mpv-winbuild-cmake
           bash ../build.sh -t '${{ matrix.bit }}' -c '${{ inputs.compiler }}'

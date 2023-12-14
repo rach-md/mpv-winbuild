@@ -9,7 +9,7 @@ on:
       build_target:
         description: "Build target"
         required: false
-        default: "64bit"
+        default: "all-64bit"
         type: choice
         options:
         - 64bit

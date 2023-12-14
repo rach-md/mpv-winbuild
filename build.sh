@@ -124,4 +124,4 @@ do
     esac
 done
 
-main "${target:-64}" "${compiler:-clang}"
+main "${target:-all-64bit}" "${compiler:-clang}"

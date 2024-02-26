@@ -578,7 +578,7 @@ jobs:
             }
 
       - name: Create release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@v1.14.0
         with:
           artifacts: "artifacts/*/mpv*.7z,sha256.txt"
           commit: version

@@ -59,7 +59,7 @@ build() {
     ninja -C $buildroot/build$bit mpv-fullclean
     
     if [ "$compiler" == "clang" ]; then
-        clang_option+=('-DCLANG_FLAGS=-fdata-sections -ffunction-sections -faddrsig' '-DLLD_FLAGS=--gc-sections --icf=all')
+        clang_option+=('-DCLANG_FLAGS=-fdata-sections -ffunction-sections -faddrsig -fno-math-errno -fno-signed-zeros' '-DLLD_FLAGS=--gc-sections --icf=all')
         cmake --fresh -DTARGET_ARCH=$arch-w64-mingw32 $gcc_arch -DCOMPILER_TOOLCHAIN=$compiler "${clang_option[@]}" -DALWAYS_REMOVE_BUILDFILES=ON -DSINGLE_SOURCE_LOCATION=$srcdir -G Ninja -H$gitdir -B$buildroot/build$bit
     fi
     cmake -DTARGET_ARCH=$arch-w64-mingw32 $gcc_arch -DCOMPILER_TOOLCHAIN=$compiler "${clang_option[@]}" -DALWAYS_REMOVE_BUILDFILES=ON -DSINGLE_SOURCE_LOCATION=$srcdir -G Ninja -H$gitdir -B$buildroot/build$bit

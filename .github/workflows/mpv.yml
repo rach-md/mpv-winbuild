@@ -47,7 +47,7 @@ on:
 
 jobs:
   params:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       sha: ${{ steps.script.outputs.sha }}
       matrix: ${{ steps.script.outputs.matrix }}
@@ -143,7 +143,7 @@ jobs:
   build_mpv:
     name: Build mpv
     needs: params
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: cachyos/cachyos-v3:latest
     continue-on-error: true
@@ -498,7 +498,7 @@ jobs:
     name: Publish release
     needs: [build_mpv,params]
     if: ${{ inputs.release == true }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout

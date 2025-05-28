@@ -569,15 +569,21 @@ jobs:
             }
             core.setOutput("note",note);
 
+      - name: Delete previous mpv release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run:  |
+          gh release delete mpv --cleanup-tag || true
 
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
           artifacts: "artifacts/mpv*.7z"
           commit: version
-          name: "${{ env.long_time }}"
+          name: "mpv"
           body: "${{ steps.note.outputs.note }}"
-          tag: "${{ env.tag_name }}"
+          tag: "mpv"
           allowUpdates: true
           artifactErrorsFailBuild: true
           prerelease: false

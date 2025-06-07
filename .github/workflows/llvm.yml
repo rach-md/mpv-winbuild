@@ -22,15 +22,10 @@ on:
       build_target:
         description: "Toolchain build target"
         required: false
-        default: "all-64bit"
+        default: "64bit"
         type: choice
         options:
-        - 32bit
         - 64bit
-        - 64bit-v3
-        - aarch64
-        - all-64bit
-        - all
       trigger_build:
         description: "Trigger mpv build action after toolchain build"
         required: false
@@ -82,7 +77,7 @@ jobs:
       - name: Build LLVM
         uses: ./action/build_toolchain
         with:
-          bit: "64-v3"
+          bit: "64"
           compiler: "clang"
           command: "ninja -C $buildroot/build$bit llvm"
           extra_option: "${{ inputs.pgo && '-DLLVM_ENABLE_PGO=GEN -DLLVM_PROFILE_DATA_DIR=$PWD/profiles/'}}"
@@ -91,7 +86,7 @@ jobs:
         uses: ./action/build_toolchain
         if: ${{ inputs.pgo }}
         with:
-          bit: "64-v3"
+          bit: "64"
           compiler: "clang"
           command: "ninja -C $buildroot/build$bit rebuild_cache && cmake --build $buildroot/build$bit --target llvm-download && ninja -C $buildroot/build$bit llvm-clang"
           extra_option: "-DLLVM_ENABLE_PGO=GEN -DLLVM_PROFILE_DATA_DIR=$buildroot/profiles/"
@@ -109,7 +104,7 @@ jobs:
         uses: ./action/build_toolchain
         if: ${{ inputs.pgo }}
         with:
-          bit: "64-v3"
+          bit: "64"
           compiler: "clang"
           command: "ninja -C $buildroot/build$bit llvm && rm -rf clang_root/llvm-thinlto || true"
           extra_option: "-DLLVM_ENABLE_PGO=USE -DLLVM_ENABLE_LTO=Thin -DLLVM_PROFDATA_FILE=$buildroot/llvm.profdata"

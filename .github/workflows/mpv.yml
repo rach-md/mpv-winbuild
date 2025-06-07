@@ -12,15 +12,10 @@ on:
       build_target:
         description: "Build target"
         required: false
-        default: "all-64bit"
+        default: "64bit"
         type: choice
         options:
-        - 32bit
         - 64bit
-        - 64bit-v3
-        - aarch64
-        - all-64bit
-        - all
       lgpl:
         description: "Also build lgpl libmpv"
         required: false
@@ -80,29 +75,7 @@ jobs:
             
             let matrix = {};
             let build_target = "${{ inputs.build_target }}"
-            switch ( build_target ) {
-              case "32bit":
-                matrix.bit = ["32"];
-                break;
-              case "64bit":
-                matrix.bit = ["64"];
-                break;
-              case "64bit-v3":
-                matrix.bit = ["64-v3"];
-                break;
-              case "aarch64":
-                matrix.bit = ["aarch64"];
-                break;
-              case "all-64bit":
-                matrix.bit = ["64","64-v3","aarch64"];
-                break;
-              case "all":
-                matrix.bit = ["32","64","64-v3","aarch64"];
-                break;
-              default:
-                matrix.bit = ["64","64-v3","aarch64"];
-                break;
-            }
+            matrix.bit = ["64"];
             core.setOutput("matrix_bit",JSON.stringify(matrix));
             matrix.lgpl=[false];
             if ("${{ inputs.lgpl}}" == "true") {
@@ -352,17 +325,7 @@ jobs:
           srcdir=$(pwd)/src_packages
           
           builddir=$buildroot/build$bit
-          if [ $bit == "32" ]; then
-              arch="i686"
-          elif [ $bit == "64" ]; then
-              arch="x86_64"
-          elif [ $bit == "64-v3" ]; then
-              arch="x86_64"
-              gcc_arch=-DGCC_ARCH=x86-64-v3
-              x86_64_level=-v3
-          elif [ $bit == "aarch64" ]; then
-              arch="aarch64"
-          fi
+          arch="x86_64"
           retry-tool() {
             local RETRY_COUNTER=0
             local MAX_RETRY=3
@@ -391,7 +354,7 @@ jobs:
           if [ "${{ matrix.lgpl }}" = "true" ]; then
             git am --3way ../compile-lgpl-libmpv.patch
           fi
-          bash ../build.sh -t '${{ matrix.bit }}' -c '${{ inputs.compiler }}' -s "${{ matrix.lgpl == true && 'true' || 'false' }}"
+          bash ../build.sh -c '${{ inputs.compiler }}' -s "${{ matrix.lgpl == true && 'true' || 'false' }}"
       - name: Collect logs
         if: ${{ always() }}
         run: |
@@ -411,23 +374,8 @@ jobs:
             const path = require('path');
             const types = ["mpv-debug", "mpv-dev", "mpv"];
             const lgpl = ${{ matrix.lgpl }} ? "-lgpl" : "";
-            let arch="";
-            switch ( "${{ matrix.bit }}" ) {
-              case "32":
-                arch = "i686";
-                break;
-              case "64":
-                arch = "x86_64";
-                break;
-              case "64-v3":
-                arch = "x86_64-v3";
-                break;
-              case "aarch64":
-                arch = "aarch64";
-                break;
-            }
             for (let type of types) {
-              const globber = await glob.create(`mpv-winbuild-cmake/release/${type}${lgpl}-${arch}-*.7z`);
+              const globber = await glob.create(`mpv-winbuild-cmake/release/${type}${lgpl}-*.7z`);
               const files = await globber.glob();
               if ( files.length > 0 ) {
                 const file = files[0];
@@ -664,10 +612,7 @@ jobs:
             note+="**Download Tips:**\n";
             const path = require('path');
             const tips = {
-              "i686": "for 32 bit system",
               "x86_64": "for 64 bit system",
-              "x86_64-v3": "for 64 bit system with cpu not older than Intel Haswell or AMD Excavator",
-              "aarch64": "for ARM64(aarch64)"
             }
             async function getTips(arch){
               const globber = await glob.create(`artifacts/mpv-${arch}-[0-9]*.7z`);

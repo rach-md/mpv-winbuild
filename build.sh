@@ -8,8 +8,8 @@ main() {
     srcdir=$(pwd)/src_packages
     bit="64"
     arch="x86_64"
-    compiler=$1
-    simple_package=$2
+    compiler="clang"
+    simple_package=$1
 
     prepare
     package
@@ -24,16 +24,11 @@ package() {
 }
 
 build() {
-    if [ "$compiler" == "clang" ]; then
-        clang_option=(-DCMAKE_INSTALL_PREFIX=$clang_root -DMINGW_INSTALL_PREFIX=$buildroot/build$bit/install/$arch-w64-mingw32 -DCLANG_PACKAGES_LTO=ON)
-    fi
-    cmake -Wno-dev --fresh -DTARGET_ARCH=$arch-w64-mingw32 -DCOMPILER_TOOLCHAIN=$compiler "${clang_option[@]}" $extra_option -DENABLE_CCACHE=ON -DSINGLE_SOURCE_LOCATION=$srcdir -DRUSTUP_LOCATION=$buildroot/install_rustup -G Ninja -H$gitdir -B$buildroot/build$bit
+    cmake -Wno-dev --fresh -DTARGET_ARCH=$arch-w64-mingw32 -DCOMPILER_TOOLCHAIN=$compiler -DCMAKE_INSTALL_PREFIX=$clang_root -DMINGW_INSTALL_PREFIX=$buildroot/build$bit/install/$arch-w64-mingw32 -DCLANG_PACKAGES_LTO=ON $extra_option -DENABLE_CCACHE=ON -DSINGLE_SOURCE_LOCATION=$srcdir -DRUSTUP_LOCATION=$buildroot/install_rustup -G Ninja -H$gitdir -B$buildroot/build$bit
 
     ninja -C $buildroot/build$bit download || true
 
-    if [ "$compiler" == "gcc" ] && [ ! -f "$buildroot/build$bit/install/bin/cross-gcc" ]; then
-        ninja -C $buildroot/build$bit gcc && rm -rf $buildroot/build$bit/toolchain
-    elif [ "$compiler" == "clang" ] && [ ! "$(ls -A $clang_root/bin/clang)" ]; then
+    if [ ! "$(ls -A $clang_root/bin/clang)" ]; then
         ninja -C $buildroot/build$bit llvm && ninja -C $buildroot/build$bit llvm-clang
     fi
 
@@ -97,13 +92,12 @@ prepare() {
     fi
 }
 
-while getopts c:s:e: flag
+while getopts s:e: flag
 do
     case "${flag}" in
-        c) compiler=${OPTARG};;
         s) simple_package=${OPTARG};;
         e) extra_option=${OPTARG};;
     esac
 done
 
-main "${compiler:-gcc}" "${simple_package:-false}"
+main "${simple_package:-false}"

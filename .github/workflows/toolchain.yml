@@ -72,7 +72,6 @@ jobs:
     steps:
       - name: Install Dependencies
         run: |
-          sudo echo -e "[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf
           sudo pacman -Syu --noconfirm
           sudo pacman -S --noconfirm --needed git ninja cmake meson wget mimalloc
           mkdir -p /home/opt/7zip

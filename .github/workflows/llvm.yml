@@ -7,7 +7,7 @@ on:
       pgo:
         description: "Build llvm with PGO"
         required: false
-        default: false
+        default: true
         type: boolean   
       no_save_cache:
         description: "Don't save caches after success build"
@@ -29,7 +29,7 @@ on:
       trigger_build:
         description: "Trigger mpv build action after toolchain build"
         required: false
-        default: true
+        default: false
         type: boolean
       release:
         description: "Publish a release after mpv build"

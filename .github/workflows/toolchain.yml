@@ -27,7 +27,7 @@ on:
       trigger_build:
         description: "Trigger mpv build action after success build"
         required: false
-        default: true
+        default: false
         type: boolean
       release:
         description: "Publish a release"

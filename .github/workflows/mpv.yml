@@ -30,12 +30,12 @@ on:
       no_save_cache:
         description: "Don't save caches after success build"
         required: false
-        default: false
+        default: true
         type: boolean
       release:
         description: "Publish a release"
         required: false
-        default: false
+        default: true
         type: boolean
       command:
         description: 'input command you want to run before build'

@@ -174,7 +174,6 @@ jobs:
   rust:
     name: Install Rust Toolchain
     needs: [params]
-    if: ${{ false }}
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/archlinux/archlinux:base-devel
@@ -184,7 +183,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git ninja cmake meson wget
+          sudo pacman -S --noconfirm --needed git ninja cmake meson wget unzip
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global pull.rebase true
@@ -213,7 +212,7 @@ jobs:
           key: rust-${{ needs.params.outputs.cache_suffix }}
 
   trigger:
-    needs: [build,params]
+    needs: [build,params,rust]
     if: ${{ always() && inputs.trigger_build != false && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-latest
     permissions:

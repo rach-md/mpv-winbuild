@@ -25,14 +25,6 @@ build() {
 
     ninja -C $buildroot/build$bit download || true
 
-    if [ ! "$(ls -A $clang_root/bin/clang)" ]; then
-        ninja -C $buildroot/build$bit llvm && ninja -C $buildroot/build$bit llvm-clang
-    fi
-
-    if [[ ! "$(ls -A $buildroot/install_rustup/.cargo/bin)" ]]; then
-        ninja -C $buildroot/build$bit rustup-fullclean
-        ninja -C $buildroot/build$bit rustup
-    fi
     ninja -C $buildroot/build$bit update
     ninja -C $buildroot/build$bit mpv-fullclean
     

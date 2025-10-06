@@ -105,8 +105,14 @@ jobs:
           echo "sha=${{ needs.params.outputs.sha }}" >> $GITHUB_ENV
           echo "short_time=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
           echo "cache_suffix=$(date "+%Y-%m-%d")-${{ github.run_id }}-${{ github.run_attempt }}" >> $GITHUB_ENV
-          sed -i '/ccache_conf.in/d'  mpv-winbuild-cmake/CMakeLists.txt
-          sed -i '/ccache/d' mpv-winbuild-cmake/exec.in
+          cd mpv-winbuild-cmake
+          if [[ "$(ls -A ../patch/*.patch)" ]]; then
+            for patch in ../patch/*.patch ; do
+              git am --3way "$patch" || git am --abort
+            done
+          fi
+          sed -i '/ccache_conf.in/d' CMakeLists.txt
+          sed -i '/ccache/d' exec.in
 
       - name: Lookup Toolchain Cache
         id: lookup_toolchain
@@ -246,11 +252,6 @@ jobs:
         run: |
           chmod +x build.sh
           cd mpv-winbuild-cmake
-          if [[ "$(ls -A ../patch/*.patch)" ]]; then
-            for patch in ../patch/*.patch ; do
-              git am --3way "$patch" || git am --abort
-            done
-          fi
           bash ../build.sh
       - name: Collect logs
         if: ${{ always() }}

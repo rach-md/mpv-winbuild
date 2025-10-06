@@ -23,90 +23,91 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y nasm libmimalloc-dev
-          pip install --user meson rst2pdf
-          rustup update
-          rustup target add x86_64-pc-windows-gnullvm
+      - uses: actions/checkout@main
+        with:
+          ref: main
       - name: Setup git config
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global pull.rebase true
           git config --global rebase.autoStash true
           git config --global fetch.prune true
-      - uses: actions/checkout@v6
-      - name: Checkout build
-        uses: actions/checkout@v6
+      - name: Restore source cache
+        uses: actions/cache/restore@main
         with:
-          repository: shinchiro/mpv-winbuild-cmake
-          path: mpv-winbuild-cmake
-          fetch-depth: 0
-      - name: Applying patch
+          path: src_packages
+          key: cached_source
+      - name: Restore build cache
+        uses: actions/cache/restore@main
+        with:
+          path: build
+          key: cached_build
+      - name: Install dependencies
         run: |
-          cd mpv-winbuild-cmake
-          if [[ "$(ls -A ../patch/*.patch)" ]]; then
-            for patch in ../patch/*.patch ; do
-              git am --3way "$patch" || git am --abort
-            done
-          fi
-      - name: Install LLVM based MinGW toolchain
-        id: install_llvm-mingw
-        run: |
-          cd mpv-winbuild-cmake
-          mkdir -p build/install
-          url=$(curl -L \
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ccache nasm libmimalloc2.0
+          pip install --user meson rst2pdf
+          rustup update
+          rustup target add x86_64-pc-windows-gnullvm
+          mkdir -p llvm build/install
+          url=$(curl -sL \
                      -H "Accept: application/vnd.github+json" \
                      -H "X-GitHub-Api-Version: 2022-11-28" \
                      https://api.github.com/repos/mstorsjo/llvm-mingw/releases/latest \
                      | jq -r '.assets[] | select(.browser_download_url | match("ucrt-ubuntu.*x86_64")) | .browser_download_url')
-          curl -Lo - $url | tar -xJf - -C $PWD/build/install --strip-components=1 --exclude "aarch64*" --exclude "arm64ec*" --exclude "armv7*"
+          echo "Downloading & installing llvm-mingw"
+          curl -sLO $url && echo "llvm-mingw is successfully downloaded "
+          filename=$(basename $url .tar.xz)
+          tar -xJf $filename.tar.xz -C $PWD/llvm --strip-components=1 $filename/bin $filename/lib --exclude "aarch64*" --exclude "arm64ec*" --exclude "armv7*" &&
+          tar -xJf $filename.tar.xz -C $PWD/build/install --strip-components=1 $filename/generic-w64-mingw32 $filename/x86_64-w64-mingw32 &&
+          echo "llvm-mingw is successfully installed"
       - name: Build
         id: build
         run: |
-          cd mpv-winbuild-cmake
           mkdir -p release
 
-          cmake -Wno-dev --fresh -DTARGET_ARCH=x86_64-w64-mingw32 -DCOMPILER_TOOLCHAIN=clang -DCMAKE_INSTALL_PREFIX=$PWD/build/install -DMINGW_INSTALL_PREFIX=$PWD/build/install/x86_64-w64-mingw32 -DCLANG_PACKAGES_LTO=ON -DSINGLE_SOURCE_LOCATION=$PWD/src_packages -DRUSTUP_LOCATION=$HOME -G Ninja -B $PWD/build -S $PWD
+          cmake -Wno-dev --fresh -DTARGET_ARCH=x86_64-w64-mingw32 -DCOMPILER_TOOLCHAIN=clang -DCMAKE_INSTALL_PREFIX=$PWD/llvm -DMINGW_INSTALL_PREFIX=$PWD/build/install/x86_64-w64-mingw32 -DSINGLE_SOURCE_LOCATION=$PWD/src_packages -DRUST_LOCATION=$HOME -G Ninja -B $PWD/build -S $PWD
 
           ninja -C $PWD/build download || true
           ninja -C $PWD/build update
           ninja -C $PWD/build mpv-fullclean
           ninja -C $PWD/build mpv
-          if [ -n "$(find $PWD/build -maxdepth 1 -type d -name "mpv*" -print -quit)" ] ; then
+          if [ -n "$(find $PWD/build -maxdepth 1 -type d -name "mpv" -print -quit)" ] ; then
               echo "Successfully compiled mpv. Continue"
           else
               echo "Failed compiled mpv. Stop"
               exit 1
           fi
 
-          mv $PWD/build/mpv* $PWD/release
+          mv $PWD/build/mpv $PWD/release
           cd $PWD/release
-          for dir in ./mpv*; do
+          for dir in ./mpv; do
               if [ -d $dir ]; then
                   7z a -m0=lzma2 -mx=9 -ms=on mpv.7z $dir/* -x!*.7z
                   rm -rf $dir
               fi
           done
+          cd ..
+          sudo rm -rf $PWD/build/mpv
+          sudo chmod -R a+rwx $PWD/build
       - name: Collect logs
         if: ${{ always() }}
         run: |
-          sudo 7z a logs.7z $(find mpv-winbuild-cmake/build -type f -iname "*-*.log" -or -wholename "*/ffbuild/config.log")
+          sudo 7z a logs.7z $(find build -type f -iname "*-*.log" -or -wholename "*/ffbuild/config.log")
       - name: Upload logs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@main
         if: ${{ always() }}
         with:
           name: logs
           path: logs.7z
       - name: Upload mpv
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@main
         with:
           name: mpv
-          path: mpv-winbuild-cmake/release/mpv.7z
+          path: release/mpv.7z
       - name: Job summary
-        uses: actions/github-script@v8
+        uses: actions/github-script@main
         continue-on-error: true
         if: ${{ always() }}
         with:
@@ -115,40 +116,16 @@ jobs:
             const { readdirSync,existsSync } = require('fs');
             const myExec = async (command, args = null) => await exec.getExecOutput(command,args,{silent: true}).then(result => result.stdout.trim()).catch(err => '');
             
-            const upstreamDir = path.resolve("mpv-winbuild-cmake");
-            const workdir = path.resolve(upstreamDir,"src_packages");
+            const rootdir = process.cwd();
+            const workdir = path.resolve(rootdir,"src_packages");
             const isGitSync = dirname => existsSync(path.join(workdir, dirname, '.git'));
             
             const getGithubUrl = (hash,remote) => remote.replace(/\.git$/,"") + `/commit/${hash}`;
-            const getGitlabUrl = (hash,remote) => remote.replace(/\.git$/,"") + `/-/commit/${hash}`;
-            const getBitbucketUrl = (hash,remote) => remote.replace(/\.git$/,"") + `/commits/${hash}`;
-            const getGoogleSourceUrl = (hash,remote) => remote + `/+/${hash}`;            
-            const gethGitVideolanUrl = (hash,remote) => remote.replace(/\/git\//,"/?p=") + `;a=commit;h=${hash}`;
-            const getCgitUrl = (hash,remote) => remote + `/commit/?id=${hash}`;
-            const getCodebergUrl = (hash,remote) => remote.replace(/\.git$/,"") + `/commit/${hash}`;
             function getCommitUrl(hash,remote) {
                 let url = "";
                 switch (true) {
                   case /github\.com/.test(remote):
                     url = getGithubUrl(hash,remote);
-                    break;
-                  case /(gitlab\.com|code\.videolan\.org|gitlab\.(gnome|freedesktop)\.org)/.test(remote):
-                    url = getGitlabUrl(hash,remote);
-                    break;
-                  case /bitbucket\.org/.test(remote):
-                    url = getBitbucketUrl(hash,remote);
-                    break;
-                  case /googlesource\.com/.test(remote):
-                    url = getGoogleSourceUrl(hash,remote);
-                    break;
-                  case /git\.videolan\.org/.test(remote):
-                    url = gethGitVideolanUrl(hash,remote);
-                    break;
-                  case /git\.libssh\.org/.test(remote):
-                    url = getCgitUrl(hash,remote);
-                    break;
-                  case /codeberg\.org/.test(remote):
-                    url = getCodebergUrl(hash,remote);
                     break;
                   default:
                     url = remote;
@@ -184,16 +161,40 @@ jobs:
             packages_table = core.summary.addTable(packages_table).stringify();
             await core.summary.clear();
             
-            [upstream_local_hash, upstream_remote_hash, upstream_status, upstream_remote] = await repo_info(upstreamDir)
-            const upstream_url = getCommitUrl(upstream_remote_hash, upstream_remote);
+            const exec_path = path.join(rootdir,'build','exec');
+            const clang_version = (await myExec(`${exec_path}`,["clang","--version"])).split('\n')[0];
+            const rustc_version = (await myExec(`${exec_path}`,["rustc","--version"]));
 
-            const exec_path = path.join(upstreamDir,'build','exec');
-            const compiler_version = (await myExec(`${exec_path}`,["clang","--version"])).split('\n')[0];
-                        
             core.summary
-              .addRaw(`mpv-winbuild-cmake: ${upstream_status} (remote:<a href="${upstream_url}">${upstream_remote_hash.slice(0,7)}</a>)`,true)
-              .addRaw(`Compiler: ${compiler_version}`,true);
+              .addRaw(`Compiler:`,true)
+              .addRaw(`${clang_version}`,true)
+              .addRaw(`${rustc_version}`,true);
             await core.summary.addDetails('Packages Version',packages_table).write();
+      - name: Delete previous source and build cache
+        run : |
+          curl -L \
+          -X DELETE \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ github.token }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/caches?key=cached_source&ref=${{ github.ref }}"
+
+          curl -L \
+          -X DELETE \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ github.token }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          "https://api.github.com/repos/${{ github.repository }}/actions/caches?key=cached_build&ref=${{ github.ref }}"
+      - name: Save source cache
+        uses: actions/cache/save@main
+        with:
+          path: src_packages
+          key: cached_source
+      - name: Save build cache
+        uses: actions/cache/save@main
+        with:
+          path: build
+          key: cached_build
 
   publish_release:
     name: Publish release
@@ -205,18 +206,17 @@ jobs:
       attestations: write
       contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@main
       - name: Download artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@main
         with:
           path: artifacts
           pattern: 'mpv*'
       - name: Check artifacts
-        uses: actions/github-script@v8
+        uses: actions/github-script@main
         with:
           script: |
-            const globber = await glob.create(`artifacts/mpv*.7z`);
+            const globber = await glob.create(`artifacts/mpv.7z`);
             const files = await globber.glob();
             if ( files.length == 0 ) {
               core.setFailed("Artifact does not exist!");
@@ -224,44 +224,27 @@ jobs:
       - name: Get current time
         run: |
           echo "long_time=$(date "+%Y-%m-%d %H:%M")" >> $GITHUB_ENV
-          echo "tag_name=$(date "+%Y-%m-%d")"  >> $GITHUB_ENV
-      - name: Commit version & remove existing tag
-        env:
-          tag_name: ${{ env.tag_name }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git fetch --tags
-          git checkout version || git checkout -b version origin/version || ( git checkout --orphan version && git rm -rf . )
-          echo -e "${tag_name}" > version
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add version
-          git diff-index --quiet HEAD || ( git commit -m "${tag_name}" && git push origin version )
-          if [ $(git tag -l "${tag_name}") ] ;then
-            gh release delete "${tag_name}" || true
-            git push --delete origin "${tag_name}" || true
-            git tag -d "${tag_name}" || true
-          fi
-          git checkout main
       - name: Generate release note
         id: note
-        uses: actions/github-script@v8
+        uses: actions/github-script@main
         with:
           script: |
             let note = ``;
             note+="**Build Time**: ${{ env.long_time }}\n";
             note+="**Build Details**: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}\n";
             core.setOutput("note",note);
-      - name: Delete previous mpv release and tag
+      - name: Prepare release
         env:
           GH_TOKEN: ${{ github.token }}
         run:  |
           gh release delete mpv --cleanup-tag || true
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag mpv
       - name: Create release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@main
         with:
           artifacts: "artifacts/mpv*.7z"
-          commit: version
           name: "mpv"
           body: "${{ steps.note.outputs.note }}"
           tag: "mpv"
@@ -270,7 +253,7 @@ jobs:
           prerelease: false
           makeLatest: true
       - name: Attest
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@main
         continue-on-error: true
         with:
           subject-path: 'artifacts/*.7z'

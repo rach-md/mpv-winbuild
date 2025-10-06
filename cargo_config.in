@@ -1,0 +1,17 @@
+[net]
+git-fetch-with-cli = true
+
+[target.@TARGET_CPU@-pc-windows-gnullvm]
+linker = "@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-clang++"
+rustflags = [
+    "-C", "target-cpu=@GCC_ARCH@",
+    "-C", "lto=thin",
+    "-C", "linker-plugin-lto",
+    "-C", "embed-bitcode"
+]
+
+[profile.release]
+panic = "abort"
+strip = true
+opt-level = 3
+codegen-units = 1

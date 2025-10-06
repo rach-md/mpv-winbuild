@@ -1,0 +1,11 @@
+#!/bin/bash
+export O_PATH="$PATH"
+export PATH="@LLVM_LOCATION@/bin:@RUST_LOCATION@/.cargo/bin:$PATH"
+export PKG_CONFIG="pkgconf --static"
+export PKG_CONFIG_LIBDIR="@MINGW_INSTALL_PREFIX@/lib/pkgconfig"
+export RUSTUP_HOME="@RUST_LOCATION@/.rustup"
+export CARGO_HOME="@RUST_LOCATION@/.cargo"
+export LD_PRELOAD="@MALLOC@"
+export CCACHE_DIR="@CCACHE_DIR@"
+
+eval $*

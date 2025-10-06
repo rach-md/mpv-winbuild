@@ -1,0 +1,2582 @@
+From 1107682511b086285768a12eddeeb347a34f3e01 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Mon, 6 Oct 2025 16:32:58 +0800
+Subject: [PATCH 01/37] CMakeLists: remove meson version check
+
+---
+ CMakeLists.txt | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a43f2d0..340bfa4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -20,11 +20,6 @@ string(REGEX MATCH "^[^-]+" TARGET_CPU ${TARGET_ARCH})
+ execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpmachine OUTPUT_VARIABLE HOST_ARCH)
+ string(REGEX MATCH "^[^-]+" HOST_CPU ${HOST_ARCH})
+ 
+-execute_process(COMMAND meson --version OUTPUT_VARIABLE MESON_VERSION)
+-if(NOT MESON_VERSION GREATER_EQUAL 1.3)
+-    message(FATAL_ERROR "Meson 1.3.0 or greater is required. Install it with pip instead.")
+-endif()
+-
+ if(TARGET_CPU STREQUAL "x86_64")
+     set(TARGET_CPU_FAMILY "x86_64")
+     set(TARGET_BITS 64)
+-- 
+2.51.0.windows.1
+
+
+From 01a4dcd53810bd492f930c33e4d56b34f19c7b2c Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Mon, 6 Oct 2025 15:57:12 +0800
+Subject: [PATCH 02/37] CMakeLists: configure cargo config to config.toml
+
+---
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 340bfa4..0d1b548 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -102,7 +102,7 @@ endif()
+ 
+ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/meson_cross.txt.in ${CMAKE_CURRENT_BINARY_DIR}/meson_cross.txt @ONLY)
+ set(MESON_CROSS ${CMAKE_CURRENT_BINARY_DIR}/meson_cross.txt)
+-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cargo_config.in ${RUSTUP_LOCATION}/.cargo/config @ONLY)
++configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cargo_config.in ${RUSTUP_LOCATION}/.cargo/config.toml @ONLY)
+ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/exec.in ${CMAKE_CURRENT_BINARY_DIR}/exec @ONLY)
+ set(EXEC ${CMAKE_CURRENT_BINARY_DIR}/exec)
+ set(MAKE ${EXEC} make -j${MAKEJOBS})
+-- 
+2.51.0.windows.1
+
+
+From 66d421879853c29d26da648421e60205c2d3bccc Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Wed, 8 Oct 2025 19:53:10 +0800
+Subject: [PATCH 03/37] meson_cross: set pkgconfig to pkgconf
+
+---
+ meson_cross.txt.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/meson_cross.txt.in b/meson_cross.txt.in
+index 09bc8aa..bd36c3f 100644
+--- a/meson_cross.txt.in
++++ b/meson_cross.txt.in
+@@ -5,7 +5,7 @@ as = '@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-gcc'
+ ar = '@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-ar'
+ strip = '@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-strip'
+ windres = '@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-windres'
+-pkgconfig = '@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-pkgconf'
++pkgconfig = 'pkgconf'
+ dlltool = '@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-dlltool'
+ nasm = 'nasm'
+ # exe_wrapper = 'wine'
+-- 
+2.51.0.windows.1
+
+
+From 196d0458a10e20c142283347cda4041b0fb073d2 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sat, 11 Oct 2025 13:39:56 +0800
+Subject: [PATCH 04/37] cargo_config: add more config
+
+---
+ cargo_config.in | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/cargo_config.in b/cargo_config.in
+index 3dec7ee..485721d 100644
+--- a/cargo_config.in
++++ b/cargo_config.in
+@@ -3,14 +3,14 @@ git-fetch-with-cli = true
+ 
+ [target.@TARGET_CPU@-pc-windows-gnu]
+ linker = "@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-g++"
+-ar = "@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-ar"
+-rustflags = ["-Ctarget-cpu=@GCC_ARCH@"]
++rustflags = ["-C", "target-cpu=@GCC_ARCH@"]
+ 
+ [target.@TARGET_CPU@-pc-windows-gnullvm]
+ linker = "@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-clang++"
+-ar = "@CMAKE_INSTALL_PREFIX@/bin/@TARGET_ARCH@-ar"
+-rustflags = ["-Ctarget-cpu=@GCC_ARCH@"]
++rustflags = ["-C", "target-cpu=@GCC_ARCH@"]
+ 
+ [profile.release]
+ panic = "abort"
+ strip = true
++opt-level = 3
++codegen-units = 1
+-- 
+2.51.0.windows.1
+
+
+From 7e4ff8b922feb0bde04a0c58507d054d58bdd6e2 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Mon, 1 Sep 2025 18:46:35 +0800
+Subject: [PATCH 05/37] CMakeLists: remove some packages from compilation
+
+---
+ packages/CMakeLists.txt | 74 -----------------------------------------
+ 1 file changed, 74 deletions(-)
+
+diff --git a/packages/CMakeLists.txt b/packages/CMakeLists.txt
+index 6d297f3..44cc5f1 100644
+--- a/packages/CMakeLists.txt
++++ b/packages/CMakeLists.txt
+@@ -1,106 +1,35 @@
+ set_property(DIRECTORY PROPERTY EP_STEP_TARGETS download)
+ include(${PROJECT_SOURCE_DIR}/cmake/packages_check.cmake)
+ list(APPEND ep
+-    gmp
+     xz
+-    lzo
+     uchardet
+-    libsamplerate
+-    rubberband
+     zlib
+     zstd
+-    bzip2
+     libjpeg
+     lcms2
+-    lame
+-    ogg
+-    vorbis
+-    opus-dnn
+-    opus
+-    speex
+-    libmodplug
+-    libvpx
+-    xvidcore
+-    game-music-emu
+-    libpng
+-    x264
+-    x265
+-    libdvdcss
+-    libdvdread
+-    libdvdnav
+     libiconv
+     luajit
+     fribidi
+-    expat
+-    nettle
+-    mbedtls
+-    libxml2
+     brotli
+     freetype2
+-    libudfread
+-    libbluray
+     harfbuzz
+-    libsoxr
+-    graphengine
+-    libzimg
+-    fontconfig
+     libunibreak
+     libass
+-    libvpl
+-    amf-headers
+-    avisynth-headers
+-    nvcodec-headers
+-    libmysofa
+-    aom
+     xxhash
+     dav1d
+-    libwebp
+-    vapoursynth
+-    libbs2b
+-    openssl
+-    libssh
+-    libsrt
+     libarchive
+     highway
+     libjxl
+-    uavs3d
+-    davs2
+-    angle-headers
+-    mujs
+     spirv-headers
+     spirv-tools
+     spirv-cross
+     glslang
+     vulkan-header
+-    vulkan
+-    libsdl2
+-    openal-soft
+-    libopenmpt
+     shaderc
+-    glad
+     fast_float
+-    svtav1
+     libplacebo
+-    libva
+-    libzvbi
+-    libaribcaption
+-    libsixel
+     ffmpeg
+     mpv
+-    mpv-release
+-    mpv-packaging
+-    curl
+-    flac
+-    opusfile
+-    libopusenc
+-    opus-tools
+-    termcap
+-    readline
+-    cryptopp
+-    sqlite
+-    libuv
+-    libsodium
+-    megasdk
+ )
+ foreach(package IN LISTS ep)
+     if(NOT ${SINGLE_SOURCE_LOCATION} STREQUAL "")
+@@ -118,9 +47,6 @@ list(LENGTH ep ep_length)
+ message(STATUS "Parsing ${ep_length} packages")
+ 
+ # Exclude packages which dont depend on mpv when update
+-list(APPEND removed "flac" "opusfile" "libopusenc" "opus-tools" "termcap" "readline" "cryptopp" "sqlite" "libuv" "libsodium" "megasdk" "libsixel" "curl" "libressl" "mbedtls" "nettle" "gmp")
+-list(REMOVE_ITEM repo ${removed})
+-list(REMOVE_ITEM ep ${removed})
+ list(TRANSFORM repo APPEND "-force-update" OUTPUT_VARIABLE update)
+ list(TRANSFORM ep APPEND "-download" OUTPUT_VARIABLE download)
+ list(TRANSFORM ep APPEND "-fullclean" OUTPUT_VARIABLE fullclean)
+-- 
+2.51.0.windows.1
+
+
+From f77eb3b44f0b54317c44b54567c8a17cd7dac30c Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Wed, 21 May 2025 20:29:37 +0800
+Subject: [PATCH 06/37] zlib: use zlib latest git
+
+---
+ packages/zlib.cmake | 16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
+
+diff --git a/packages/zlib.cmake b/packages/zlib.cmake
+index 5a1aa65..c7b7be2 100644
+--- a/packages/zlib.cmake
++++ b/packages/zlib.cmake
+@@ -1,5 +1,5 @@
+ ExternalProject_Add(zlib
+-    GIT_REPOSITORY https://github.com/zlib-ng/zlib-ng.git
++    GIT_REPOSITORY https://github.com/madler/zlib.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--filter=tree:0"
+     UPDATE_COMMAND ""
+@@ -11,15 +11,13 @@ ExternalProject_Add(zlib
+         -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
+         -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
+         -DCMAKE_FIND_ROOT_PATH=${MINGW_INSTALL_PREFIX}
+-        -DBUILD_SHARED_LIBS=OFF
+-        -DINSTALL_PKGCONFIG_DIR=${MINGW_INSTALL_PREFIX}/lib/pkgconfig
+-        -DSKIP_INSTALL_LIBRARIES=OFF
+-        -DZLIB_COMPAT=ON
+-        -DZLIB_ENABLE_TESTS=OFF
+-        -DZLIBNG_ENABLE_TESTS=OFF
+-        -DFNO_LTO_AVAILABLE=OFF
+-    BUILD_COMMAND ${EXEC} ${zlib_nlto} ninja -C <BINARY_DIR>
++        -DZLIB_BUILD_SHARED=OFF
++        -DZLIB_BUILD_TESTING=OFF
++        -DZLIB_INSTALL_COMPAT_DLL=OFF
++    BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
++            COMMAND ${CMAKE_COMMAND} -E rename ${MINGW_INSTALL_PREFIX}/lib/libzs.a
++                                               ${MINGW_INSTALL_PREFIX}/lib/libz.a
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+ )
+ 
+-- 
+2.51.0.windows.1
+
+
+From 9222ba022b1b3b5669f763d6ac2edb82077dbeaf Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 19:31:27 +0800
+Subject: [PATCH 07/37] xz: switch to cmake and github master
+
+---
+ packages/xz.cmake | 30 ++++++++++++++++--------------
+ 1 file changed, 16 insertions(+), 14 deletions(-)
+
+diff --git a/packages/xz.cmake b/packages/xz.cmake
+index 670e691..c143f01 100644
+--- a/packages/xz.cmake
++++ b/packages/xz.cmake
+@@ -1,21 +1,23 @@
+ ExternalProject_Add(xz
+-    GIT_REPOSITORY https://gitlab.com/shinchiro/xz.git
++    GIT_REPOSITORY https://github.com/tukaani-project/xz.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--filter=tree:0"
+     UPDATE_COMMAND ""
+-    GIT_RESET 18b845e69752c975dfeda418ec00eda22605c2ee # v5.4.1
+-    CONFIGURE_COMMAND ${EXEC} CONF=1 autoreconf -fi && <SOURCE_DIR>/configure
+-        --host=${TARGET_ARCH}
+-        --prefix=${MINGW_INSTALL_PREFIX}
+-        --disable-shared
+-        --disable-xz
+-        --disable-xzdec
+-        --disable-lzmadec
+-        --disable-lzmainfo
+-        --disable-doc
+-    BUILD_COMMAND ${MAKE}
+-    INSTALL_COMMAND ${MAKE} install
+-    BUILD_IN_SOURCE 1
++    CONFIGURE_COMMAND ${EXEC} CONF=1 cmake -H<SOURCE_DIR> -B<BINARY_DIR>
++        -G Ninja
++        -DCMAKE_BUILD_TYPE=Release
++        -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
++        -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
++        -DCMAKE_FIND_ROOT_PATH=${MINGW_INSTALL_PREFIX}
++        -DBUILD_SHARED_LIBS=OFF
++        -DBUILD_TESTING=OFF
++        -DXZ_TOOL_XZDEC=OFF
++        -DXZ_TOOL_LZMADEC=OFF
++        -DXZ_TOOL_LZMAINFO=OFF
++        -DXZ_TOOL_XZ=OFF
++        -DXZ_DOC=OFF
++    BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
++    INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+ )
+ 
+-- 
+2.51.0.windows.1
+
+
+From 2ada73bdc9fdc1fbf3201c377c8b5d5f36aa946d Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 19:32:35 +0800
+Subject: [PATCH 08/37] zstd: disable tests and contrib
+
+---
+ packages/zstd.cmake | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/packages/zstd.cmake b/packages/zstd.cmake
+index c58155c..211665e 100644
+--- a/packages/zstd.cmake
++++ b/packages/zstd.cmake
+@@ -14,6 +14,9 @@ ExternalProject_Add(zstd
+         -Dlegacy_level=0
+         -Ddebug_level=0
+         -Dbin_programs=false
++        -Dbin_tests=false
++        -Dbin_contrib=false
++        -Dmulti_thread=enabled
+         -Dzlib=disabled
+         -Dlzma=disabled
+         -Dlz4=disabled
+-- 
+2.51.0.windows.1
+
+
+From e2679e0ef12bdfc5a87dbf6b765f0e6dc250c80e Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 19:36:45 +0800
+Subject: [PATCH 09/37] freetype2: remove dependencies
+
+---
+ packages/freetype2.cmake | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
+
+diff --git a/packages/freetype2.cmake b/packages/freetype2.cmake
+index 1b5ca64..e49e483 100644
+--- a/packages/freetype2.cmake
++++ b/packages/freetype2.cmake
+@@ -1,8 +1,4 @@
+ ExternalProject_Add(freetype2
+-    DEPENDS
+-        libpng
+-        zlib
+-        brotli
+     GIT_REPOSITORY https://github.com/freetype/freetype.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--filter=tree:0"
+@@ -16,9 +12,9 @@ ExternalProject_Add(freetype2
+         --default-library=static
+         -Dharfbuzz=disabled
+         -Dtests=disabled
+-        -Dbrotli=enabled
+-        -Dzlib=enabled
+-        -Dpng=enabled
++        -Dpng=disabled
++        -Dbrotli=disabled
++        -Dzlib=disabled
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+-- 
+2.51.0.windows.1
+
+
+From 2f8667298320a6bf8f54b825c2d412cbc6817543 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 19:43:24 +0800
+Subject: [PATCH 10/37] harfbuzz: don't depend on libpng
+
+disable utilities
+---
+ packages/harfbuzz.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/packages/harfbuzz.cmake b/packages/harfbuzz.cmake
+index 5248f25..51a3307 100644
+--- a/packages/harfbuzz.cmake
++++ b/packages/harfbuzz.cmake
+@@ -1,7 +1,6 @@
+ ExternalProject_Add(harfbuzz
+     DEPENDS
+         freetype2
+-        libpng
+     GIT_REPOSITORY https://github.com/harfbuzz/harfbuzz.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_REMOTE_NAME origin
+@@ -21,6 +20,7 @@ ExternalProject_Add(harfbuzz
+         -Dtests=disabled
+         -Ddocs=disabled
+         -Dbenchmark=disabled
++        -Dutilities=disabled
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+-- 
+2.51.0.windows.1
+
+
+From 857f9c04fbddaacdf80b9d9b5e13df9a505252b7 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 19:46:20 +0800
+Subject: [PATCH 11/37] lcms2: remove dependencies
+
+disable tests and plugins
+---
+ packages/lcms2.cmake | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/packages/lcms2.cmake b/packages/lcms2.cmake
+index 3ed38cf..13abde8 100644
+--- a/packages/lcms2.cmake
++++ b/packages/lcms2.cmake
+@@ -1,7 +1,4 @@
+ ExternalProject_Add(lcms2
+-    DEPENDS
+-        libjpeg
+-        zlib
+     GIT_REPOSITORY https://github.com/mm2/Little-CMS.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--filter=tree:0"
+@@ -12,8 +9,8 @@ ExternalProject_Add(lcms2
+         --cross-file=${MESON_CROSS}
+         --buildtype=release
+         --default-library=static
+-        -Dfastfloat=true
+-        -Dthreaded=true
++        -Dtests=disabled
++        -Djpeg=disabled
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+-- 
+2.51.0.windows.1
+
+
+From cbc20aaf5ceaaf07f83799617d0af3fbc599ad78 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sat, 27 Sep 2025 08:47:58 +0800
+Subject: [PATCH 12/37] libarchive: update configure switches
+
+---
+ packages/libarchive.cmake | 24 +++++++++++++-----------
+ 1 file changed, 13 insertions(+), 11 deletions(-)
+
+diff --git a/packages/libarchive.cmake b/packages/libarchive.cmake
+index ef23ed7..ec984a3 100644
+--- a/packages/libarchive.cmake
++++ b/packages/libarchive.cmake
+@@ -1,13 +1,9 @@
+ ExternalProject_Add(libarchive
+     DEPENDS
+-        bzip2
+-        expat
+-        lzo
+         xz
+         zlib
+         zstd
+-        openssl
+-        libxml2
++        libiconv
+     GIT_REPOSITORY https://github.com/libarchive/libarchive.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--filter=tree:0"
+@@ -22,21 +18,27 @@ ExternalProject_Add(libarchive
+         -DBUILD_SHARED_LIBS=OFF
+         -DENABLE_ZLIB=ON
+         -DENABLE_ZSTD=ON
+-        -DENABLE_OPENSSL=ON
+-        -DENABLE_BZip2=ON
++        -DENABLE_OPENSSL=OFF
++        -DENABLE_BZip2=OFF
+         -DENABLE_ICONV=ON
+-        -DENABLE_LIBXML2=ON
+-        -DENABLE_EXPAT=ON
+-        -DENABLE_LZO=ON
++        -DENABLE_LIBXML2=OFF
++        -DENABLE_EXPAT=OFF
++        -DENABLE_LZO=OFF
++        -DENABLE_WIN32_XMLLITE=OFF
++        -DENABLE_PCREPOSIX=OFF
++        -DENABLE_PCRE2POSIX=OFF
++        -DENABLE_LZ4=OFF
++        -DENABLE_LIBB2=OFF
+         -DENABLE_LZMA=ON
+         -DENABLE_CPIO=OFF
+         -DENABLE_CAT=OFF
+         -DENABLE_TAR=OFF
++        -DENABLE_ACL=OFF
+         -DENABLE_WERROR=OFF
+         -DBUILD_TESTING=OFF
+         -DENABLE_TEST=OFF
+         -DWINDOWS_VERSION=WIN10
+-        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
++        -DPOSIX_REGEX_LIB=OFF
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+-- 
+2.51.0.windows.1
+
+
+From cfce2f60887b9af394581b9782987a582c5ce88b Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 19:50:25 +0800
+Subject: [PATCH 13/37] libass: disable fontconfig
+
+---
+ packages/libass.cmake | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/packages/libass.cmake b/packages/libass.cmake
+index ed27477..7f03f84 100644
+--- a/packages/libass.cmake
++++ b/packages/libass.cmake
+@@ -4,7 +4,6 @@ ExternalProject_Add(libass
+         freetype2
+         fribidi
+         libiconv
+-        fontconfig
+         libunibreak
+     GIT_REPOSITORY https://github.com/libass/libass.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+@@ -16,7 +15,7 @@ ExternalProject_Add(libass
+         --cross-file=${MESON_CROSS}
+         --buildtype=release
+         --default-library=static
+-        -Dfontconfig=enabled
++        -Dfontconfig=disabled
+         -Ddirectwrite=enabled
+         -Dasm=enabled
+         -Dlibunibreak=enabled
+-- 
+2.51.0.windows.1
+
+
+From fec01f6fd5ecf1813ecd4d1aa50d5cb23b0dcc63 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 16 Sep 2025 22:01:44 +0800
+Subject: [PATCH 14/37] highway: disable rvv flag
+
+---
+ packages/highway.cmake | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/packages/highway.cmake b/packages/highway.cmake
+index 34237fe..79c8153 100644
+--- a/packages/highway.cmake
++++ b/packages/highway.cmake
+@@ -12,6 +12,7 @@ ExternalProject_Add(highway
+         -Dcontrib=disabled
+         -Dexamples=disabled
+         -Dtests=disabled
++        -Drvv=false
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+-- 
+2.51.0.windows.1
+
+
+From 63bb8e5f482fcb4e1e67adce3225929f310aeac3 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 19:52:33 +0800
+Subject: [PATCH 15/37] libjxl: disable jpegli compilation, disable avx512
+
+---
+ packages/libjxl.cmake | 13 +++----------
+ 1 file changed, 3 insertions(+), 10 deletions(-)
+
+diff --git a/packages/libjxl.cmake b/packages/libjxl.cmake
+index e15701e..24e1b8a 100644
+--- a/packages/libjxl.cmake
++++ b/packages/libjxl.cmake
+@@ -1,10 +1,7 @@
+-get_property(src_libjpeg TARGET libjpeg PROPERTY _EP_SOURCE_DIR)
+ ExternalProject_Add(libjxl
+     DEPENDS
+         lcms2
+-        libpng
+         zlib
+-        libjpeg
+         brotli
+         highway
+     GIT_REPOSITORY https://github.com/libjxl/libjxl.git
+@@ -15,8 +12,6 @@ ExternalProject_Add(libjxl
+     GIT_SUBMODULES ""
+     UPDATE_COMMAND ""
+     CONFIGURE_COMMAND ""
+-    COMMAND bash -c "rm -rf <SOURCE_DIR>/third_party/libjpeg-turbo"
+-    COMMAND bash -c "ln -s ${src_libjpeg} <SOURCE_DIR>/third_party/libjpeg-turbo"
+     COMMAND ${EXEC} CONF=1 cmake -H<SOURCE_DIR> -B<BINARY_DIR>
+         -G Ninja
+         -DCMAKE_BUILD_TYPE=Release
+@@ -40,14 +35,12 @@ ExternalProject_Add(libjxl
+         -DJPEGXL_ENABLE_DEVTOOLS=OFF
+         -DJPEGXL_ENABLE_BENCHMARK=OFF
+         -DJPEGXL_ENABLE_SJPEG=OFF
+-        -DJPEGXL_ENABLE_HWY_AVX3=ON
+-        -DJPEGXL_ENABLE_HWY_AVX3_ZEN4=ON
+-        -DJPEGXL_ENABLE_HWY_AVX3_SPR=ON
++        -DJPEGXL_ENABLE_HWY_AVX3=OFF
++        -DJPEGXL_ENABLE_HWY_AVX3_ZEN4=OFF
++        -DJPEGXL_ENABLE_HWY_AVX3_SPR=OFF
+         -DJPEGXL_FORCE_SYSTEM_LCMS2=ON
+         -DJPEGXL_FORCE_SYSTEM_BROTLI=ON
+         -DJPEGXL_FORCE_SYSTEM_HWY=ON
+-        -DCMAKE_CXX_FLAGS='${CMAKE_CXX_FLAGS} ${libjxl_unaligned_vector}'
+-        -DCMAKE_C_FLAGS='${CMAKE_C_FLAGS}     ${libjxl_unaligned_vector}'
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+-- 
+2.51.0.windows.1
+
+
+From 3b20bc3d81cd3ab01748157d4ee719f0b11dae5b Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Thu, 29 May 2025 21:21:25 +0800
+Subject: [PATCH 16/37] luajit: switch to upstream repo
+
+---
+ packages/luajit.cmake | 11 ++++-------
+ packages/luajit.pc.in |  6 +++---
+ 2 files changed, 7 insertions(+), 10 deletions(-)
+
+diff --git a/packages/luajit.cmake b/packages/luajit.cmake
+index 4499eb6..772f41b 100644
+--- a/packages/luajit.cmake
++++ b/packages/luajit.cmake
+@@ -8,7 +8,7 @@ endif()
+ 
+ if(${TARGET_CPU} MATCHES "i686")
+     set(LUAJIT_GCC_ARGS "-m32")
+-    set(DISABLE_JIT "-DLUAJIT_DISABLE_JIT")
++    set(NO_UNWIND "-DLUAJIT_NO_UNWIND")
+ else()
+     set(LUAJIT_GCC_ARGS "-m64")
+ endif()
+@@ -19,7 +19,7 @@ set(EXPORT
+     BUILDMODE=static
+     FILE_T=luajit.exe
+     CFLAGS='-DUNICODE'
+-    XCFLAGS='-DLUAJIT_ENABLE_LUA52COMPAT ${DISABLE_JIT}'
++    XCFLAGS='${NO_UNWIND}'
+     PREFIX=${MINGW_INSTALL_PREFIX} Q="
+ )
+ 
+@@ -27,14 +27,11 @@ set(EXPORT
+ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/luajit.pc.in ${CMAKE_CURRENT_BINARY_DIR}/luajit.pc @ONLY)
+ 
+ ExternalProject_Add(luajit
+-    DEPENDS
+-        libiconv
+-    GIT_REPOSITORY https://github.com/openresty/luajit2.git
++    GIT_REPOSITORY https://github.com/LuaJIT/LuaJIT.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--filter=tree:0"
+     GIT_REMOTE_NAME origin
+-    GIT_TAG v2.1-agentzh
+-    PATCH_COMMAND ${EXEC} git am --3way ${CMAKE_CURRENT_SOURCE_DIR}/luajit-*.patch
++    GIT_TAG v2.1
+     UPDATE_COMMAND ""
+     CONFIGURE_COMMAND ""
+     BUILD_COMMAND ${MAKE} -C <SOURCE_DIR>/src
+diff --git a/packages/luajit.pc.in b/packages/luajit.pc.in
+index 506e150..53b5f0c 100644
+--- a/packages/luajit.pc.in
++++ b/packages/luajit.pc.in
+@@ -1,8 +1,8 @@
+ # Package information for LuaJIT to be used by pkg-config.
+ majver=2
+ minver=1
+-relver=0
+-version=${majver}.${minver}.${relver}-beta3
++relver=ROLLING
++version=${majver}.${minver}.${relver}
+ abiver=5.1
+ 
+ prefix=@MINGW_INSTALL_PREFIX@
+@@ -21,5 +21,5 @@ URL: http://luajit.org
+ Version: ${version}
+ Requires:
+ Libs: -L${libdir} -l${libname}
+-Libs.private: -lm -liconv
++Libs.private: -lm
+ Cflags: -I${includedir}
+-- 
+2.51.0.windows.1
+
+
+From 7a57a974beee908c77ceefa473576260432f499c Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 20:00:56 +0800
+Subject: [PATCH 17/37] uchardet: switch to release
+
+---
+ packages/uchardet.cmake | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/packages/uchardet.cmake b/packages/uchardet.cmake
+index f354258..4e885f7 100644
+--- a/packages/uchardet.cmake
++++ b/packages/uchardet.cmake
+@@ -1,8 +1,7 @@
+ ExternalProject_Add(uchardet
+-    GIT_REPOSITORY https://gitlab.freedesktop.org/uchardet/uchardet.git
+-    SOURCE_DIR ${SOURCE_LOCATION}
+-    GIT_CLONE_FLAGS "--filter=tree:0"
+-    UPDATE_COMMAND ""
++    URL https://www.freedesktop.org/software/uchardet/releases/uchardet-0.0.8.tar.xz
++    URL_HASH SHA256=e97a60cfc00a1c147a674b097bb1422abd9fa78a2d9ce3f3fdcc2e78a34ac5f0
++    DOWNLOAD_DIR ${SOURCE_LOCATION}
+     CONFIGURE_COMMAND ${EXEC} CONF=1 cmake -H<SOURCE_DIR> -B<BINARY_DIR>
+         -G Ninja
+         -DCMAKE_BUILD_TYPE=Release
+@@ -19,5 +18,4 @@ ExternalProject_Add(uchardet
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+ )
+ 
+-force_rebuild_git(uchardet)
+ cleanup(uchardet install)
+-- 
+2.51.0.windows.1
+
+
+From 1c012af0f6f15e62825798324815f6417fc7dc12 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 20:02:04 +0800
+Subject: [PATCH 18/37] vulkan-header: only download source
+
+---
+ packages/vulkan-header.cmake | 13 +++----------
+ 1 file changed, 3 insertions(+), 10 deletions(-)
+
+diff --git a/packages/vulkan-header.cmake b/packages/vulkan-header.cmake
+index fcd9e82..4382d10 100644
+--- a/packages/vulkan-header.cmake
++++ b/packages/vulkan-header.cmake
+@@ -5,17 +5,10 @@ ExternalProject_Add(vulkan-header
+     UPDATE_COMMAND ""
+     GIT_REMOTE_NAME origin
+     GIT_TAG main
+-    CONFIGURE_COMMAND ${EXEC} CONF=1 cmake -H<SOURCE_DIR> -B<BINARY_DIR>
+-        -G Ninja
+-        -DCMAKE_BUILD_TYPE=Release
+-        -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
+-        -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
+-        -DCMAKE_FIND_ROOT_PATH=${MINGW_INSTALL_PREFIX}
+-        -DBUILD_SHARED_LIBS=OFF
+-        -DVULKAN_HEADERS_ENABLE_MODULE=OFF
++    CONFIGURE_COMMAND ""
+     BUILD_COMMAND ""
+-    INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+-    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_INSTALL 1
++    INSTALL_COMMAND ""
++    LOG_DOWNLOAD 1 LOG_UPDATE 1
+ )
+ force_rebuild_git(vulkan-header)
+ cleanup(vulkan-header install)
+-- 
+2.51.0.windows.1
+
+
+From 1c5b9f4df1feffdb06cd8308d23e358bf347eaa9 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 20:02:33 +0800
+Subject: [PATCH 19/37] xxhash: remove unused flags
+
+---
+ packages/xxhash.cmake | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/packages/xxhash.cmake b/packages/xxhash.cmake
+index aec5477..c2b850d 100644
+--- a/packages/xxhash.cmake
++++ b/packages/xxhash.cmake
+@@ -14,7 +14,6 @@ ExternalProject_Add(xxhash
+         -DBUILD_SHARED_LIBS=OFF
+         -DXXHASH_BUILD_XXHSUM=OFF
+         ${xxhash_dispatch}
+-        -DCMAKE_C_FLAGS='${CMAKE_C_FLAGS} ${xxhash_cflags}'
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+-- 
+2.51.0.windows.1
+
+
+From 719c030b44574a436a31ac9c88f9348f4dc56231 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sun, 25 May 2025 10:00:13 +0800
+Subject: [PATCH 20/37] spirv-cross: disable some features
+
+---
+ packages/spirv-cross.cmake | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/packages/spirv-cross.cmake b/packages/spirv-cross.cmake
+index d49b9d3..c457c81 100644
+--- a/packages/spirv-cross.cmake
++++ b/packages/spirv-cross.cmake
+@@ -16,17 +16,17 @@ ExternalProject_Add(spirv-cross
+         -DSPIRV_CROSS_SHARED=ON
+         -DSPIRV_CROSS_CLI=OFF
+         -DSPIRV_CROSS_ENABLE_TESTS=OFF
+-        -DCMAKE_CXX_FLAGS='${CMAKE_CXX_FLAGS} -D__USE_MINGW_ANSI_STDIO'
++        -DSPIRV_CROSS_ENABLE_MSL=OFF
++        -DSPIRV_CROSS_ENABLE_CPP=OFF
++        -DSPIRV_CROSS_ENABLE_REFLECT=OFF
++        -DSPIRV_CROSS_ENABLE_UTIL=OFF
++        -DCMAKE_CXX_FLAGS='${CMAKE_CXX_FLAGS}'
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
++            COMMAND ${CMAKE_COMMAND} -E create_symlink ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/spirv-cross-c-shared.pc
++                                                       ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/spirv-cross.pc
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+ )
+ 
+-ExternalProject_Add_Step(spirv-cross symlink
+-    DEPENDEES install
+-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/spirv-cross-c-shared.pc
+-                                               ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/spirv-cross.pc
+-)
+-
+ force_rebuild_git(spirv-cross)
+ cleanup(spirv-cross install)
+-- 
+2.51.0.windows.1
+
+
+From 43aa799a09a403eb0476e2874fcea52a0b35f3d4 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sun, 25 May 2025 11:44:59 +0800
+Subject: [PATCH 21/37] shaderc: remove -std=c++17
+
+---
+ packages/shaderc.cmake | 72 ++++++++++++++++++------------------------
+ 1 file changed, 30 insertions(+), 42 deletions(-)
+
+diff --git a/packages/shaderc.cmake b/packages/shaderc.cmake
+index 2540ff1..71f42ed 100644
+--- a/packages/shaderc.cmake
++++ b/packages/shaderc.cmake
+@@ -1,3 +1,6 @@
++get_property(src_glslang TARGET glslang PROPERTY _EP_SOURCE_DIR)
++get_property(src_spirv-headers TARGET spirv-headers PROPERTY _EP_SOURCE_DIR)
++get_property(src_spirv-tools TARGET spirv-tools PROPERTY _EP_SOURCE_DIR)
+ ExternalProject_Add(shaderc
+     DEPENDS
+         glslang
+@@ -9,51 +12,36 @@ ExternalProject_Add(shaderc
+     GIT_TAG main
+     GIT_CLONE_FLAGS "--filter=tree:0"
+     UPDATE_COMMAND ""
+-    CONFIGURE_COMMAND ${EXEC} LTO_JOB=1 CONF=1 cmake -H<SOURCE_DIR> -B<BINARY_DIR>
+-        -G Ninja
+-        -DCMAKE_BUILD_TYPE=Release
+-        -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
+-        -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
+-        -DCMAKE_FIND_ROOT_PATH=${MINGW_INSTALL_PREFIX}
+-        -DBUILD_SHARED_LIBS=OFF
+-        -DSHADERC_SKIP_TESTS=ON
+-        -DSHADERC_SKIP_SPVC=ON
+-        -DSHADERC_SKIP_INSTALL=ON
+-        -DSHADERC_SKIP_EXAMPLES=ON
+-        -DSPIRV_SKIP_EXECUTABLES=ON
+-        -DSPIRV_SKIP_TESTS=ON
+-        -DENABLE_SPIRV_TOOLS_INSTALL=ON
+-        -DENABLE_GLSLANG_BINARIES=OFF
+-        -DSPIRV_TOOLS_BUILD_STATIC=ON
+-        -DSPIRV_TOOLS_LIBRARY_TYPE=STATIC
+-        -DMINGW_COMPILER_PREFIX=${TARGET_ARCH}
+-        -DCMAKE_CXX_FLAGS='${CMAKE_CXX_FLAGS} -std=c++17'
++    CONFIGURE_COMMAND ""
++              COMMAND ${CMAKE_COMMAND} -E create_symlink ${src_glslang} <SOURCE_DIR>/third_party/glslang
++              COMMAND ${CMAKE_COMMAND} -E create_symlink ${src_spirv-headers} <SOURCE_DIR>/third_party/spirv-headers
++              COMMAND ${CMAKE_COMMAND} -E create_symlink ${src_spirv-tools} <SOURCE_DIR>/third_party/spirv-tools
++              COMMAND ${EXEC} LTO_JOB=1 CONF=1 cmake -H<SOURCE_DIR> -B<BINARY_DIR>
++                  -G Ninja
++                  -DCMAKE_BUILD_TYPE=Release
++                  -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
++                  -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
++                  -DCMAKE_FIND_ROOT_PATH=${MINGW_INSTALL_PREFIX}
++                  -DBUILD_SHARED_LIBS=OFF
++                  -DSHADERC_SKIP_TESTS=ON
++                  -DSHADERC_SKIP_SPVC=ON
++                  -DSHADERC_SKIP_INSTALL=ON
++                  -DSHADERC_SKIP_EXAMPLES=ON
++                  -DSPIRV_SKIP_EXECUTABLES=ON
++                  -DSPIRV_SKIP_TESTS=ON
++                  -DENABLE_SPIRV_TOOLS_INSTALL=ON
++                  -DENABLE_GLSLANG_BINARIES=OFF
++                  -DSPIRV_TOOLS_BUILD_STATIC=ON
++                  -DSPIRV_TOOLS_LIBRARY_TYPE=STATIC
++                  -DMINGW_COMPILER_PREFIX=${TARGET_ARCH}
++                  -DCMAKE_CXX_FLAGS='${CMAKE_CXX_FLAGS}'
+     BUILD_COMMAND ${EXEC} LTO_JOB=1 ninja -C <BINARY_DIR>
++          COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/libshaderc/include/shaderc ${MINGW_INSTALL_PREFIX}/include/shaderc
++          COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/libshaderc/libshaderc_combined.a ${MINGW_INSTALL_PREFIX}/lib/libshaderc_combined.a
++          COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/shaderc_combined.pc ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/shaderc.pc
+     INSTALL_COMMAND ""
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+ )
+ 
+-get_property(src_glslang TARGET glslang PROPERTY _EP_SOURCE_DIR)
+-get_property(src_spirv-headers TARGET spirv-headers PROPERTY _EP_SOURCE_DIR)
+-get_property(src_spirv-tools TARGET spirv-tools PROPERTY _EP_SOURCE_DIR)
+-
+-ExternalProject_Add_Step(shaderc symlink
+-    DEPENDEES download update patch
+-    DEPENDERS configure
+-    WORKING_DIRECTORY <SOURCE_DIR>/third_party
+-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${src_glslang} glslang
+-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${src_spirv-headers} spirv-headers
+-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${src_spirv-tools} spirv-tools
+-    COMMENT "Symlinking glslang, spirv-headers, spirv-tools"
+-)
+-
+-ExternalProject_Add_Step(shaderc manual-install
+-    DEPENDEES build
+-    COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/libshaderc/include/shaderc ${MINGW_INSTALL_PREFIX}/include/shaderc
+-    COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/libshaderc/libshaderc_combined.a ${MINGW_INSTALL_PREFIX}/lib/libshaderc_combined.a
+-    COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/shaderc_combined.pc ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/shaderc.pc
+-    COMMENT "Manually installing"
+-)
+-
+ force_rebuild_git(shaderc)
+-cleanup(shaderc manual-install)
++cleanup(shaderc install)
+-- 
+2.51.0.windows.1
+
+
+From 949b5a030aed7fc706aec726be0df59fbf52affb Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sun, 13 Jul 2025 18:29:12 +0800
+Subject: [PATCH 22/37] libjpeg: disable tools and tests
+
+---
+ packages/libjpeg.cmake | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/packages/libjpeg.cmake b/packages/libjpeg.cmake
+index 0912161..bc6b70e 100644
+--- a/packages/libjpeg.cmake
++++ b/packages/libjpeg.cmake
+@@ -15,6 +15,7 @@ ExternalProject_Add(libjpeg
+         -DENABLE_STATIC=ON
+         -DENABLE_SHARED=OFF
+         -DWITH_TURBOJPEG=OFF
++        -DWITH_TOOLS=OFF
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+-- 
+2.51.0.windows.1
+
+
+From 40d07da0fe468f035a122876c0eb40df18532239 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 16 Sep 2025 18:34:33 +0800
+Subject: [PATCH 23/37] dav1d: switch to github mirror
+
+disable xxhash_muxer
+---
+ packages/dav1d.cmake | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/packages/dav1d.cmake b/packages/dav1d.cmake
+index 92c3c8b..01e8cfe 100644
+--- a/packages/dav1d.cmake
++++ b/packages/dav1d.cmake
+@@ -1,7 +1,5 @@
+ ExternalProject_Add(dav1d
+-    DEPENDS
+-        xxhash
+-    GIT_REPOSITORY https://code.videolan.org/videolan/dav1d.git
++    GIT_REPOSITORY https://github.com/videolan/dav1d.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--filter=tree:0"
+     UPDATE_COMMAND ""
+@@ -13,7 +11,7 @@ ExternalProject_Add(dav1d
+         --default-library=static
+         -Denable_tools=false
+         -Denable_tests=false
+-        -Dxxhash_muxer=enabled
++        -Dxxhash_muxer=disabled
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+-- 
+2.51.0.windows.1
+
+
+From 7cef79d7c73cc1fa92fada582c864e42c353ddbd Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sun, 1 Jun 2025 05:14:05 +0800
+Subject: [PATCH 24/37] lld: use --icf=all
+
+---
+ toolchain/llvm/llvm-ld.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/toolchain/llvm/llvm-ld.in b/toolchain/llvm/llvm-ld.in
+index e5d1608..4451f79 100644
+--- a/toolchain/llvm/llvm-ld.in
++++ b/toolchain/llvm/llvm-ld.in
+@@ -10,7 +10,7 @@ if [ "$CONF" == "1" ]; then
+ else
+     FLAGS="$FLAGS -O3 --lto-O3 --lto-CGO3 -s -Xlink=-release"
+     if [ "$GC" != "0" ]; then
+-        LLD_GC="--gc-sections --icf=safe"
++        LLD_GC="--gc-sections --icf=all"
+     fi
+     if [ "$PDB" == "1" ]; then
+         FLAGS="$FLAGS --pdb="
+-- 
+2.51.0.windows.1
+
+
+From 310e24737d4f9673945066d0fbda823d203bb773 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sat, 7 Jun 2025 16:01:28 +0800
+Subject: [PATCH 25/37] rustup: only target x86_64-pc-windows-gnullvm
+
+remove cargo-c install
+---
+ toolchain/rustup.cmake | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/toolchain/rustup.cmake b/toolchain/rustup.cmake
+index b920c64..3604861 100644
+--- a/toolchain/rustup.cmake
++++ b/toolchain/rustup.cmake
+@@ -4,9 +4,9 @@ ExternalProject_Add(rustup
+     SOURCE_DIR rustup-prefix/src
+     CONFIGURE_COMMAND ${EXEC} CONF=1
+         curl -sSf https://sh.rustup.rs |
+-        sh -s -- -y --default-toolchain stable --target aarch64-pc-windows-gnullvm,x86_64-pc-windows-gnullvm,i686-pc-windows-gnullvm,x86_64-pc-windows-gnu,i686-pc-windows-gnu --no-modify-path --profile minimal
++        sh -s -- -y --default-toolchain stable --target x86_64-pc-windows-gnullvm --no-modify-path --profile minimal
+     BUILD_COMMAND ${EXEC} rustup update
+-    INSTALL_COMMAND ${EXEC} LD_PRELOAD= cargo install cargo-c --profile=release-strip --features=vendored-openssl
++    INSTALL_COMMAND ""
+     LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+ )
+ 
+-- 
+2.51.0.windows.1
+
+
+From 9205e15d7b77af13e505cf78b0c82e04ffbd18ff Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Mon, 22 Sep 2025 18:25:09 +0800
+Subject: [PATCH 26/37] cppwinrt: switch from wget to curl
+
+---
+ toolchain/cppwinrt.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/toolchain/cppwinrt.cmake b/toolchain/cppwinrt.cmake
+index ab33767..6802c0c 100644
+--- a/toolchain/cppwinrt.cmake
++++ b/toolchain/cppwinrt.cmake
+@@ -10,7 +10,7 @@ ExternalProject_Add(cppwinrt
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+-            COMMAND ${EXEC} wget -O <BINARY_DIR>/Windows.winmd  https://github.com/microsoft/windows-rs/raw/master/crates/libs/bindgen/default/Windows.winmd
++            COMMAND ${EXEC} curl -Lo <BINARY_DIR>/Windows.winmd https://github.com/microsoft/windows-rs/raw/master/crates/libs/bindgen/default/Windows.winmd
+             COMMAND ${EXEC} cppwinrt -input <BINARY_DIR>/Windows.winmd -output ${MINGW_INSTALL_PREFIX}/include/
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+ )
+-- 
+2.51.0.windows.1
+
+
+From 26b3dad437b60a17ba2fd45a4c695179df1e0fb2 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Thu, 25 Sep 2025 09:18:55 +0800
+Subject: [PATCH 27/37] llvm: update to LLVM 21.1.4
+
+---
+ toolchain/llvm/llvm.cmake | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
+
+diff --git a/toolchain/llvm/llvm.cmake b/toolchain/llvm/llvm.cmake
+index 8ab2a57..5f82a12 100644
+--- a/toolchain/llvm/llvm.cmake
++++ b/toolchain/llvm/llvm.cmake
+@@ -1,12 +1,8 @@
+ set(clang_version "21")
+ ExternalProject_Add(llvm
+-    GIT_REPOSITORY https://github.com/llvm/llvm-project.git
+-    SOURCE_DIR ${SOURCE_LOCATION}
+-    GIT_CLONE_FLAGS "--sparse --filter=tree:0"
+-    GIT_CLONE_POST_COMMAND "sparse-checkout set --no-cone /* !*/test !/lldb !/mlir !/clang-tools-extra !/mlir !/polly !/bolt !/flang"
+-    UPDATE_COMMAND ""
+-    GIT_REMOTE_NAME origin
+-    GIT_TAG release/21.x
++    URL https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.4/llvm-project-21.1.4.src.tar.xz
++    URL_HASH SHA256=A01AD7E5167780C945871D75C0413081D12067607A6DE5CF71DC3E8D1A82112C
++    DOWNLOAD_DIR ${SOURCE_LOCATION}
+     LIST_SEPARATOR ,
+     CONFIGURE_COMMAND ${EXEC} CONF=1 PATH=$O_PATH cmake -H<SOURCE_DIR>/llvm -B<BINARY_DIR>
+         -G Ninja
+-- 
+2.51.0.windows.1
+
+
+From 7896aefe64e94261c8033eb22dcff10e488ab492 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 20:05:15 +0800
+Subject: [PATCH 28/37] ffmpeg: disable unused features
+
+---
+ packages/ffmpeg.cmake | 114 +++++++-----------------------------------
+ 1 file changed, 18 insertions(+), 96 deletions(-)
+
+diff --git a/packages/ffmpeg.cmake b/packages/ffmpeg.cmake
+index 252c687..a1d12e5 100644
+--- a/packages/ffmpeg.cmake
++++ b/packages/ffmpeg.cmake
+@@ -1,51 +1,8 @@
+ ExternalProject_Add(ffmpeg
+     DEPENDS
+-        amf-headers
+-        avisynth-headers
+-        ${nvcodec_headers}
+-        bzip2
+-        lame
+-        lcms2
+-        openssl
+-        libssh
+-        libsrt
+-        libass
+-        libbluray
+-        libdvdnav
+-        libdvdread
+-        libmodplug
+-        libpng
+-        libsoxr
+-        libbs2b
+-        libvpx
+-        libwebp
+-        libzimg
+-        libmysofa
+-        fontconfig
+-        harfbuzz
+-        opus
+-        speex
+-        vorbis
+-        x264
+-        ${ffmpeg_x265}
+-        xvidcore
+-        libxml2
+-        libvpl
+-        libopenmpt
++        zlib
+         libjxl
+-        shaderc
+-        libplacebo
+-        libzvbi
+-        libaribcaption
+-        aom
+-        svtav1
+         dav1d
+-        vapoursynth
+-        ${ffmpeg_uavs3d}
+-        ${ffmpeg_davs2}
+-        rubberband
+-        libva
+-        openal-soft
+     GIT_REPOSITORY https://github.com/FFmpeg/FFmpeg.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--sparse --filter=tree:0"
+@@ -56,64 +13,29 @@ ExternalProject_Add(ffmpeg
+         --prefix=${MINGW_INSTALL_PREFIX}
+         --arch=${TARGET_CPU}
+         --target-os=mingw32
++        --pkg-config=pkgconf
+         --pkg-config-flags=--static
+         --enable-cross-compile
+         --enable-runtime-cpudetect
+-        --enable-gpl
+-        --enable-version3
+-        --enable-avisynth
+-        --enable-vapoursynth
+-        --enable-libass
+-        --enable-libbluray
+-        --enable-libdvdnav
+-        --enable-libdvdread
+-        --enable-libfreetype
+-        --enable-libfribidi
+-        --enable-libfontconfig
+-        --enable-libharfbuzz
+-        --enable-libmodplug
+-        --enable-libopenmpt
+-        --enable-libmp3lame
+-        --enable-lcms2
+-        --enable-libopus
+-        --enable-libsoxr
+-        --enable-libspeex
+-        --enable-libvorbis
+-        --enable-libbs2b
+-        --enable-librubberband
+-        --enable-libvpx
+-        --enable-libwebp
+-        --enable-libx264
+-        --enable-libx265
+-        --enable-libaom
+-        --enable-libsvtav1
++        --disable-autodetect
++        --enable-zlib
+         --enable-libdav1d
+-        ${ffmpeg_davs2_cmd}
+-        ${ffmpeg_uavs3d_cmd}
+-        --enable-libxvid
+-        --enable-libzimg
+-        --enable-openssl
+-        --enable-libxml2
+-        --enable-libmysofa
+-        --enable-libssh
+-        --enable-libsrt
+-        --enable-libvpl
+         --enable-libjxl
+-        --enable-libplacebo
+-        --enable-libshaderc
+-        --enable-libzvbi
+-        --enable-libaribcaption
+-        ${ffmpeg_cuda}
+-        --enable-amf
+-        --enable-openal
+-        --enable-opengl
++        --enable-schannel
++        --enable-d3d11va
++        --enable-dxva2
+         --disable-doc
+-        --disable-ffplay
+-        --disable-ffprobe
+-        --enable-vaapi
+-        --disable-vdpau
+-        --disable-videotoolbox
+-        --disable-decoder=libaom_av1
++        --disable-programs
++        --disable-debug
++        --disable-avdevice
++        --disable-muxers
++        --disable-demuxer=matroska
++        --disable-devices
++        --disable-bsfs
++        --disable-filters
++        --enable-filter=aresample,dynaudnorm
++        --disable-encoders
++        --disable-decoder=aac_fixed,ac3_fixed,mp1,mp2,mp3,mp3adu,mp3on4
+         ${ffmpeg_lto}
+         --extra-cflags='-Wno-error=int-conversion'
+         "--extra-libs='${ffmpeg_extra_libs}'" # -lstdc++ / -lc++ needs by libjxl and shaderc
+-- 
+2.51.0.windows.1
+
+
+From 091034c7e9b648f47369859593be840986574193 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 19:54:41 +0800
+Subject: [PATCH 29/37] libplacebo: disable unused features
+
+---
+ packages/libplacebo.cmake | 33 +++++++++++++++------------------
+ 1 file changed, 15 insertions(+), 18 deletions(-)
+
+diff --git a/packages/libplacebo.cmake b/packages/libplacebo.cmake
+index b5797dc..edea4dd 100644
+--- a/packages/libplacebo.cmake
++++ b/packages/libplacebo.cmake
+@@ -1,12 +1,11 @@
+-get_property(src_glad TARGET glad PROPERTY _EP_SOURCE_DIR)
++get_property(src_vulkan-header TARGET vulkan-header PROPERTY _EP_SOURCE_DIR)
+ get_property(src_fast_float TARGET fast_float PROPERTY _EP_SOURCE_DIR)
+ ExternalProject_Add(libplacebo
+     DEPENDS
+-        vulkan
++        vulkan-header
+         shaderc
+         spirv-cross
+         lcms2
+-        glad
+         fast_float
+         xxhash
+     GIT_REPOSITORY https://github.com/haasn/libplacebo.git
+@@ -15,21 +14,19 @@ ExternalProject_Add(libplacebo
+     GIT_SUBMODULES ""
+     UPDATE_COMMAND ""
+     CONFIGURE_COMMAND ""
+-    COMMAND bash -c "rm -rf <SOURCE_DIR>/3rdparty/glad"
+-    COMMAND bash -c "rm -rf <SOURCE_DIR>/3rdparty/fast_float"
+-    COMMAND bash -c "ln -s ${src_glad} <SOURCE_DIR>/3rdparty/glad"
+-    COMMAND bash -c "ln -s ${src_fast_float} <SOURCE_DIR>/3rdparty/fast_float"
+-    COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
+-        --prefix=${MINGW_INSTALL_PREFIX}
+-        --libdir=${MINGW_INSTALL_PREFIX}/lib
+-        --cross-file=${MESON_CROSS}
+-        --default-library=static
+-        -Dd3d11=enabled
+-        -Ddebug=true
+-        -Db_ndebug=true
+-        -Doptimization=3
+-        -Dvulkan-registry='${MINGW_INSTALL_PREFIX}/share/vulkan/registry/vk.xml'
+-        -Ddemos=false
++              COMMAND ${CMAKE_COMMAND} -E rm -rf <SOURCE_DIR>/3rdparty/Vulkan-Headers
++              COMMAND ${CMAKE_COMMAND} -E rm -rf <SOURCE_DIR>/3rdparty/fast_float
++              COMMAND ${CMAKE_COMMAND} -E create_symlink ${src_vulkan-header} <SOURCE_DIR>/3rdparty/Vulkan-Headers
++              COMMAND ${CMAKE_COMMAND} -E create_symlink ${src_fast_float} <SOURCE_DIR>/3rdparty/fast_float
++              COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
++                  --prefix=${MINGW_INSTALL_PREFIX}
++                  --libdir=${MINGW_INSTALL_PREFIX}/lib
++                  --cross-file=${MESON_CROSS}
++                  --buildtype=release
++                  --default-library=static
++                  -Ddemos=false
++                  -Dopengl=disabled
++                  -Dvulkan=disabled
+     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+-- 
+2.51.0.windows.1
+
+
+From c7bbc2b6e2c769df4a631c122026396e76aca9e9 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Tue, 20 May 2025 20:08:44 +0800
+Subject: [PATCH 30/37] mpv: disable unused features
+
+---
+ packages/mpv.cmake | 49 +++++++---------------------------------------
+ 1 file changed, 7 insertions(+), 42 deletions(-)
+
+diff --git a/packages/mpv.cmake b/packages/mpv.cmake
+index 874ee95..eb9b32f 100644
+--- a/packages/mpv.cmake
++++ b/packages/mpv.cmake
+@@ -1,27 +1,17 @@
+ ExternalProject_Add(mpv
+     DEPENDS
+-        angle-headers
+         ffmpeg
+-        fribidi
+         lcms2
+         libarchive
+         libass
+-        libdvdnav
+-        libdvdread
+         libiconv
+         libjpeg
+-        libpng
+         luajit
+-        rubberband
+         uchardet
+-        openal-soft
+-        mujs
+-        vulkan
+         shaderc
+         libplacebo
+         spirv-cross
+-        vapoursynth
+-        libsdl2
++        zlib
+     GIT_REPOSITORY https://github.com/mpv-player/mpv.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--filter=tree:0"
+@@ -30,29 +20,17 @@ ExternalProject_Add(mpv
+         --prefix=${MINGW_INSTALL_PREFIX}
+         --libdir=${MINGW_INSTALL_PREFIX}/lib
+         --cross-file=${MESON_CROSS}
+-        --default-library=shared
++        --buildtype=release
++        --default-library=static
+         --prefer-static
+-        -Ddebug=true
+         -Db_ndebug=true
+-        -Doptimization=3
+         -Db_lto=true
+         ${mpv_lto_mode}
+-        -Dlibmpv=true
++        -Dlibmpv=false
+         -Dpdf-build=enabled
+-        -Dlua=enabled
+-        -Djavascript=enabled
+-        -Dsdl2=enabled
+-        -Dlibarchive=enabled
+-        -Dlibbluray=enabled
+-        -Ddvdnav=enabled
+-        -Duchardet=enabled
+-        -Drubberband=enabled
+-        -Dlcms2=enabled
+-        -Dopenal=enabled
+-        -Dspirv-cross=enabled
+-        -Dvulkan=enabled
+-        -Dvapoursynth=enabled
+-        ${mpv_gl}
++        -Dlua=luajit
++        -Dgl=disabled
++        -Ddirect3d=disabled
+         -Dc_args='-Wno-error=int-conversion'
+     BUILD_COMMAND ${EXEC} LTO_JOB=1 PDB=1 ninja -C <BINARY_DIR>
+     INSTALL_COMMAND ""
+@@ -70,14 +48,6 @@ ExternalProject_Add_Step(mpv copy-binary
+     COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/mpv.exe                           ${CMAKE_CURRENT_BINARY_DIR}/mpv-package/mpv.exe
+     COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/mpv.com                           ${CMAKE_CURRENT_BINARY_DIR}/mpv-package/mpv.com
+     COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/mpv.pdf                           ${CMAKE_CURRENT_BINARY_DIR}/mpv-package/doc/manual.pdf
+-    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_INSTALL_PREFIX}/etc/fonts/fonts.conf   ${CMAKE_CURRENT_BINARY_DIR}/mpv-package/mpv/fonts.conf
+-    ${mpv_copy_debug}
+-    COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/libmpv-2.dll          ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/libmpv-2.dll
+-    COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/libmpv.dll.a          ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/libmpv.dll.a
+-    COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/include/mpv/client.h       ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/include/mpv/client.h
+-    COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/include/mpv/stream_cb.h    ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/include/mpv/stream_cb.h
+-    COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/include/mpv/render.h       ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/include/mpv/render.h
+-    COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/include/mpv/render_gl.h    ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev/include/mpv/render_gl.h
+     COMMENT "Copying mpv binaries and manual"
+ )
+ 
+@@ -94,11 +64,6 @@ ExternalProject_Add_Step(mpv copy-package-dir
+     COMMAND mv ${CMAKE_CURRENT_BINARY_DIR}/mpv-package ${CMAKE_BINARY_DIR}/mpv-${TARGET_CPU}${x86_64_LEVEL}-${BUILDDATE}
+     COMMAND ${RENAME} <SOURCE_DIR> ${CMAKE_BINARY_DIR}/mpv-${TARGET_CPU}${x86_64_LEVEL}-${BUILDDATE}
+ 
+-    COMMAND mv ${CMAKE_CURRENT_BINARY_DIR}/mpv-debug ${CMAKE_BINARY_DIR}/mpv-debug-${TARGET_CPU}${x86_64_LEVEL}-${BUILDDATE}
+-    COMMAND ${RENAME} <SOURCE_DIR> ${CMAKE_BINARY_DIR}/mpv-debug-${TARGET_CPU}${x86_64_LEVEL}-${BUILDDATE}
+-
+-    COMMAND mv ${CMAKE_CURRENT_BINARY_DIR}/mpv-dev ${CMAKE_BINARY_DIR}/mpv-dev-${TARGET_CPU}${x86_64_LEVEL}-${BUILDDATE}
+-    COMMAND ${RENAME} <SOURCE_DIR> ${CMAKE_BINARY_DIR}/mpv-dev-${TARGET_CPU}${x86_64_LEVEL}-${BUILDDATE}
+     COMMENT "Moving mpv package folder"
+     LOG 1
+ )
+-- 
+2.51.0.windows.1
+
+
+From c380986e9c2f3b84a2df50d65b09841daf2f6afe Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sun, 1 Jun 2025 20:29:03 +0800
+Subject: [PATCH 31/37] packages: add subrandr
+
+---
+ packages/subrandr.cmake | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+ create mode 100644 packages/subrandr.cmake
+
+diff --git a/packages/subrandr.cmake b/packages/subrandr.cmake
+new file mode 100644
+index 0000000..56dfcf4
+--- /dev/null
++++ b/packages/subrandr.cmake
+@@ -0,0 +1,32 @@
++ExternalProject_Add(subrandr
++    DEPENDEES
++        freetype
++        harfbuzz
++    GIT_REPOSITORY https://github.com/afishhh/subrandr.git
++    SOURCE_DIR ${SOURCE_LOCATION}
++    GIT_CLONE_FLAGS "--filter=tree:0"
++    GIT_REMOTE_NAME origin
++    GIT_TAG master
++    UPDATE_COMMAND ""
++    CONFIGURE_COMMAND ""
++    BUILD_COMMAND ${EXEC}
++        RUSTFLAGS='-Cpanic=abort
++                   -Cstrip=true
++                   -Copt-level=3
++                   -Ccodegen-units=1
++                   -Clinker=${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-clang++
++                   -Ctarget-cpu=${GCC_ARCH}
++                   -Clto=thin
++                   -Clinker-plugin-lto'
++        cd <SOURCE_DIR> && cargo xtask install
++        --prefix ${MINGW_INSTALL_PREFIX}
++        --destdir ${MINGW_INSTALL_PREFIX}
++        --target ${TARGET_CPU}-pc-windows-gnullvm
++        --static-library=true
++        --shared-library=false
++    INSTALL_COMMAND ""
++    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
++)
++
++force_rebuild_git(subrandr)
++cleanup(subrandr install)
+-- 
+2.51.0.windows.1
+
+
+From 97c662bceac96bfec6c40ae47dba15e5db2c5031 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Thu, 5 Jun 2025 05:34:51 +0800
+Subject: [PATCH 32/37] CMakeLists: add subrandr
+
+---
+ packages/CMakeLists.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/packages/CMakeLists.txt b/packages/CMakeLists.txt
+index 44cc5f1..47046a3 100644
+--- a/packages/CMakeLists.txt
++++ b/packages/CMakeLists.txt
+@@ -15,6 +15,7 @@ list(APPEND ep
+     harfbuzz
+     libunibreak
+     libass
++    subrandr
+     xxhash
+     dav1d
+     libarchive
+-- 
+2.51.0.windows.1
+
+
+From ec2f5d51ec887973224db0f897c158c4bab409f2 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Thu, 5 Jun 2025 05:42:34 +0800
+Subject: [PATCH 33/37] mpv: add subrandr
+
+---
+ packages/mpv.cmake | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/packages/mpv.cmake b/packages/mpv.cmake
+index eb9b32f..f5d4e50 100644
+--- a/packages/mpv.cmake
++++ b/packages/mpv.cmake
+@@ -12,6 +12,7 @@ ExternalProject_Add(mpv
+         libplacebo
+         spirv-cross
+         zlib
++        subrandr
+     GIT_REPOSITORY https://github.com/mpv-player/mpv.git
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--filter=tree:0"
+-- 
+2.51.0.windows.1
+
+
+From 9d88a09a9723448171e7229bfaa5bfb53870eb19 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Mon, 9 Jun 2025 18:22:35 +0800
+Subject: [PATCH 34/37] mpv: add patches to enable subrandr
+
+---
+ packages/mpv-0001-enable-subrandr.patch | 834 ++++++++++++++++++++++++
+ packages/mpv.cmake                      |   1 +
+ 2 files changed, 835 insertions(+)
+ create mode 100644 packages/mpv-0001-enable-subrandr.patch
+
+diff --git a/packages/mpv-0001-enable-subrandr.patch b/packages/mpv-0001-enable-subrandr.patch
+new file mode 100644
+index 0000000..917b056
+--- /dev/null
++++ b/packages/mpv-0001-enable-subrandr.patch
+@@ -0,0 +1,834 @@
++From e2c0d8120d98766d0b950c3a23021e3b56ed6e83 Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Hubert=20G=C5=82uchowski?= <fishhh@fishhh.dev>
++Date: Fri, 18 Apr 2025 17:09:55 +0200
++Subject: [PATCH 1/6] sub: add subrandr renderer support
++
++subrandr is a subtitle rendering library which aims to render
++SRV3 (YouTube) subtitles and WebVTT subtitles accurately.
++
++Currently in mpv WebVTT subs are rendered via ffmpeg conversion to ASS
++which throws away a lot of the style and completely disregards
++the WebVTT non-region-cue positioning algorithm. Furthermore if
++one wants to render some more complex SRV3 subtitles one has to
++resort to external converters since it's not even supported by ffmpeg.
++
++However subrandr is able to render SRV3 subtitles natively with support
++for the most commonly used features. It can render ruby text without
++relying on font metrics during conversion which is obviously fragile,
++and it can perform correct scaling using the exact calculations used by
++YouTube instead of making up ASS approximations. Similarly it follows
++the WebVTT spec for the features of WebVTT that it supports (mostly).
++
++It's not perfect of course and there's still many things it doesn't do
++or does wrong but those are things that can be incrementally improved
++outside of mpv.
++---
++ demux/demux.c     |   6 ++
++ demux/demux_sbr.c | 154 ++++++++++++++++++++++++++++++++++++++
++ meson.build       |   7 ++
++ meson.options     |   1 +
++ options/options.c |   2 +
++ sub/dec_sub.c     |   6 ++
++ sub/sd_sbr.c      | 186 ++++++++++++++++++++++++++++++++++++++++++++++
++ 7 files changed, 362 insertions(+)
++ create mode 100644 demux/demux_sbr.c
++ create mode 100644 sub/sd_sbr.c
++
++diff --git a/demux/demux.c b/demux/demux.c
++index 2bd88e8318..480dc374f9 100644
++--- a/demux/demux.c
+++++ b/demux/demux.c
++@@ -63,6 +63,9 @@ extern const demuxer_desc_t demuxer_desc_directory;
++ extern const demuxer_desc_t demuxer_desc_disc;
++ extern const demuxer_desc_t demuxer_desc_rar;
++ extern const demuxer_desc_t demuxer_desc_libarchive;
+++#if HAVE_SUBRANDR
+++extern const demuxer_desc_t demuxer_desc_sbr;
+++#endif
++ extern const demuxer_desc_t demuxer_desc_null;
++ extern const demuxer_desc_t demuxer_desc_timeline;
++ 
++@@ -76,6 +79,9 @@ static const demuxer_desc_t *const demuxer_list[] = {
++     &demuxer_desc_matroska,
++ #if HAVE_LIBARCHIVE
++     &demuxer_desc_libarchive,
+++#endif
+++#if HAVE_SUBRANDR
+++    &demuxer_desc_sbr,
++ #endif
++     &demuxer_desc_lavf,
++     &demuxer_desc_mf,
++diff --git a/demux/demux_sbr.c b/demux/demux_sbr.c
++new file mode 100644
++index 0000000000..f0accaef00
++--- /dev/null
+++++ b/demux/demux_sbr.c
++@@ -0,0 +1,154 @@
+++/*
+++ * This file is part of mpv.
+++ *
+++ * mpv is free software; you can redistribute it and/or
+++ * modify it under the terms of the GNU Lesser General Public
+++ * License as published by the Free Software Foundation; either
+++ * version 2.1 of the License, or (at your option) any later version.
+++ *
+++ * mpv is distributed in the hope that it will be useful,
+++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+++ * GNU Lesser General Public License for more details.
+++ *
+++ * You should have received a copy of the GNU Lesser General Public
+++ * License along with mpv.  If not, see <http://www.gnu.org/licenses/>.
+++ */
+++
+++// This demuxer is specific to the `sd_sbr` subtitle driver and exists
+++// so that we can take subtitle files like .srv3 or .vtt in their
+++// full text form and pass them to subrandr in the subtitle driver.
+++//
+++// There are two reasons for this:
+++// - subrandr doesn't currently support parsing packetized streams like
+++//   what is output by ffmpeg for WebVTT.
+++// - Demuxing .srv3 is not supported by ffmpeg, it also doesn't really have
+++//   a standard packetized representation that ffmpeg could demux it to
+++//   (that I know of).
+++//
+++// Note that for now this demuxer only recognizes srv3, this is to avoid
+++// regressing the behavior of other formats that were previously rendered
+++// with libass via ffmpeg conversion.
+++
+++#include <math.h>
+++
+++#include <subrandr/subrandr.h>
+++
+++#include "common/common.h"
+++#include "demux/packet.h"
+++#include "misc/bstr.h"
+++#include "stream/stream.h"
+++#include "demux.h"
+++
+++struct format_codec_info {
+++    const char *codec;
+++    const char *codec_desc;
+++};
+++
+++static const struct format_codec_info fmt_to_codec[] = {
+++    [SBR_SUBTITLE_FORMAT_UNKNOWN] = {NULL, NULL},
+++    [SBR_SUBTITLE_FORMAT_SRV3   ] = {"subrandr/srv3", "srv3"},
+++};
+++
+++struct sub_codec_ext {
+++    const char *ext;
+++    struct format_codec_info codec_info;
+++};
+++
+++static const struct sub_codec_ext codec_exts[] = {
+++    {".srv3", fmt_to_codec[SBR_SUBTITLE_FORMAT_SRV3]},
+++    {".ytt",  fmt_to_codec[SBR_SUBTITLE_FORMAT_SRV3]},
+++    {NULL}
+++};
+++
+++static const int SUBRANDR_PROBE_SIZE = 128;
+++
+++struct demux_sbr_priv {
+++    bstr content;
+++    bool exhausted;
+++};
+++
+++static int demux_open_sbr(struct demuxer *demuxer, enum demux_check check)
+++{
+++    bstr filename = bstr0(demuxer->filename);
+++    struct format_codec_info codec_info = {0};
+++
+++    for (const struct sub_codec_ext *ext = codec_exts; ext->ext; ++ext) {
+++        if (bstr_endswith0(filename, ext->ext))
+++            codec_info = ext->codec_info;
+++    }
+++
+++    if (!codec_info.codec) {
+++        int probe_size = stream_peek(demuxer->stream, SUBRANDR_PROBE_SIZE);
+++        uint8_t *probe_buffer = demuxer->stream->buffer;
+++
+++        sbr_subtitle_format fmt = sbr_probe_text((const char *)probe_buffer, (size_t)probe_size);
+++        if (fmt < MP_ARRAY_SIZE(fmt_to_codec))
+++            codec_info = fmt_to_codec[fmt];
+++    }
+++
+++    if (check != DEMUX_CHECK_REQUEST && !codec_info.codec)
+++        return -1;
+++
+++    struct demux_sbr_priv *priv = talloc_zero(demuxer, struct demux_sbr_priv);
+++
+++    priv->content = stream_read_complete(demuxer->stream, priv, 64 * 1024 * 1024);
+++    if (priv->content.start == NULL)
+++        return -1;
+++    demuxer->priv = priv;
+++
+++    struct sh_stream *stream = demux_alloc_sh_stream(STREAM_SUB);
+++    stream->codec->codec = codec_info.codec;
+++    stream->codec->codec_desc = codec_info.codec_desc;
+++    demux_add_sh_stream(demuxer, stream);
+++
+++    // Note that while in practice seeking on this stream is not possible,
+++    // if `demuxer->seekable` is `false` then a warning is emitted when one
+++    // tries to seek in the player which is undesirable. Therefore we mark
+++    // it as seekable and make seeking a no-op instead.
+++    demuxer->seekable = true;
+++    demuxer->fully_read = true;
+++    demux_close_stream(demuxer);
+++
+++    return 0;
+++}
+++
+++static bool demux_read_packet_sbr(struct demuxer *demuxer, struct demux_packet **packet)
+++{
+++    struct demux_sbr_priv *priv = demuxer->priv;
+++
+++    if (priv->exhausted)
+++        return false;
+++
+++    *packet = new_demux_packet_from(demuxer->packet_pool, priv->content.start, priv->content.len);
+++    if (!*packet)
+++        return true;
+++
+++    (*packet)->stream = 0;
+++    (*packet)->pts = 0.0;
+++    (*packet)->sub_duration = INFINITY;
+++    priv->exhausted = true;
+++
+++    return true;
+++}
+++
+++static void demux_seek_sbr(struct demuxer *demuxer, double seek_pts, int flags)
+++{
+++    // We only ever emit one packet, no seeking needed or possible.
+++}
+++
+++static void demux_switched_tracks_sbr(struct demuxer *demuxer)
+++{
+++    struct demux_sbr_priv *ctx = demuxer->priv;
+++    ctx->exhausted = false;
+++}
+++
+++
+++const struct demuxer_desc demuxer_desc_sbr = {
+++    .name = "subrandr",
+++    .desc = "subrandr text subtitle demuxer",
+++    .open = demux_open_sbr,
+++    .read_packet = demux_read_packet_sbr,
+++    .seek = demux_seek_sbr,
+++    .switched_tracks = demux_switched_tracks_sbr
+++};
++diff --git a/meson.build b/meson.build
++index 94ee12feee..b3d1e0581e 100644
++--- a/meson.build
+++++ b/meson.build
++@@ -358,6 +358,13 @@ if features['libdl']
++     dependencies += libdl
++ endif
++ 
+++subrandr = dependency('subrandr', required: get_option('subrandr'))
+++features += {'subrandr': subrandr.found()}
+++if features['subrandr']
+++    sources += files('demux/demux_sbr.c', 'sub/sd_sbr.c')
+++    dependencies += subrandr
+++endif
+++
++ # C11 atomics are mandatory but linking to the library is not always required.
++ dependencies += cc.find_library('atomic', required: false)
++ 
++diff --git a/meson.options b/meson.options
++index dae0a333ef..8839224185 100644
++--- a/meson.options
+++++ b/meson.options
++@@ -30,6 +30,7 @@ option('pthread-debug', type: 'feature', value: 'disabled', description: 'pthrea
++ option('rubberband', type: 'feature', value: 'auto', description: 'librubberband support')
++ option('sdl2', type: 'feature', value: 'disabled', description: 'SDL2')
++ option('sdl2-gamepad', type: 'feature', value: 'auto', description: 'SDL2 gamepad input')
+++option('subrandr', type: 'feature', value: 'auto', description: 'subrandr support (SRV3 and WebVTT subtitle renderer)')
++ option('uchardet', type: 'feature', value: 'auto', description: 'uchardet support')
++ option('uwp', type: 'feature', value: 'disabled', description: 'Universal Windows Platform')
++ option('vapoursynth', type: 'feature', value: 'auto', description: 'VapourSynth filter bridge')
++diff --git a/options/options.c b/options/options.c
++index 767283c790..58ae146ea2 100644
++--- a/options/options.c
+++++ b/options/options.c
++@@ -1085,6 +1085,7 @@ static const struct MPOpts mp_default_opts = {
++         "scc",
++         "smi",
++         "srt",
+++        "srv3",
++         "ssa",
++         "sub",
++         "sup",
++@@ -1092,6 +1093,7 @@ static const struct MPOpts mp_default_opts = {
++         "utf-8",
++         "utf8",
++         "vtt",
+++        "ytt",
++         NULL
++     },
++ 
++diff --git a/sub/dec_sub.c b/sub/dec_sub.c
++index 118221a658..3e32c86e02 100644
++--- a/sub/dec_sub.c
+++++ b/sub/dec_sub.c
++@@ -36,9 +36,15 @@
++ 
++ extern const struct sd_functions sd_ass;
++ extern const struct sd_functions sd_lavc;
+++#if HAVE_SUBRANDR
+++extern const struct sd_functions sd_sbr;
+++#endif
++ 
++ static const struct sd_functions *const sd_list[] = {
++     &sd_lavc,
+++#if HAVE_SUBRANDR
+++    &sd_sbr,
+++#endif
++     &sd_ass,
++     NULL
++ };
++diff --git a/sub/sd_sbr.c b/sub/sd_sbr.c
++new file mode 100644
++index 0000000000..716c2c3266
++--- /dev/null
+++++ b/sub/sd_sbr.c
++@@ -0,0 +1,186 @@
+++/*
+++ * This file is part of mpv.
+++ *
+++ * mpv is free software; you can redistribute it and/or
+++ * modify it under the terms of the GNU Lesser General Public
+++ * License as published by the Free Software Foundation; either
+++ * version 2.1 of the License, or (at your option) any later version.
+++ *
+++ * mpv is distributed in the hope that it will be useful,
+++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+++ * GNU Lesser General Public License for more details.
+++ *
+++ * You should have received a copy of the GNU Lesser General Public
+++ * License along with mpv.  If not, see <http://www.gnu.org/licenses/>.
+++ */
+++
+++#include <math.h>
+++#include <limits.h>
+++
+++#include <subrandr/subrandr.h>
+++
+++#include "mpv_talloc.h"
+++
+++#include "options/m_config.h"
+++#include "options/options.h"
+++#include "common/common.h"
+++#include "demux/packet_pool.h"
+++#include "demux/stheader.h"
+++#include "sub/osd.h"
+++#include "video/mp_image.h"
+++#include "sd.h"
+++
+++struct sd_sbr_priv {
+++    struct sbr_library *sbr_library;
+++    struct sbr_renderer *sbr_renderer;
+++    struct sbr_subtitles *sbr_subtitles;
+++    struct mp_osd_res osd;
+++    struct sub_bitmaps *bitmaps;
+++};
+++
+++static void enable_output(struct sd *sd, bool enable)
+++{
+++    struct sd_sbr_priv *ctx = sd->priv;
+++    if (enable == !!ctx->sbr_renderer)
+++        return;
+++    if (ctx->sbr_renderer) {
+++        sbr_renderer_destroy(ctx->sbr_renderer);
+++        ctx->sbr_renderer = NULL;
+++    } else {
+++        ctx->sbr_renderer = sbr_renderer_create(ctx->sbr_library);
+++        mp_require(ctx->sbr_renderer);
+++    }
+++}
+++
+++static int init(struct sd *sd)
+++{
+++    if (!sd->codec->codec)
+++        return -1;
+++    if (strcmp(sd->codec->codec, "subrandr/srv3") && strcmp(sd->codec->codec, "subrandr/vtt"))
+++        return -1;
+++
+++    struct sd_sbr_priv *ctx = talloc_zero(sd, struct sd_sbr_priv);
+++    sd->priv = ctx;
+++
+++    ctx->sbr_library = sbr_library_init();
+++    mp_require(ctx->sbr_library);
+++    ctx->bitmaps = talloc_zero(ctx, struct sub_bitmaps);
+++    ctx->bitmaps->format = SUBBITMAP_BGRA;
+++    ctx->bitmaps->num_parts = 1;
+++    ctx->bitmaps->parts = talloc_zero(ctx->bitmaps, struct sub_bitmap);
+++
+++    enable_output(sd, true);
+++
+++    return 0;
+++}
+++
+++static void decode(struct sd *sd, struct demux_packet *packet)
+++{
+++    struct sd_sbr_priv *ctx = sd->priv;
+++
+++    if (ctx->sbr_subtitles)
+++        sbr_subtitles_destroy(ctx->sbr_subtitles);
+++    if (ctx->sbr_renderer)
+++        sbr_renderer_set_subtitles(ctx->sbr_renderer, NULL);
+++
+++    sbr_subtitle_format fmt = SBR_SUBTITLE_FORMAT_UNKNOWN;
+++    if (!strcmp(sd->codec->codec, "subrandr/srv3") )
+++        fmt = SBR_SUBTITLE_FORMAT_SRV3;
+++    else if (!strcmp(sd->codec->codec, "subrandr/vtt"))
+++        fmt = SBR_SUBTITLE_FORMAT_WEBVTT;
+++
+++    ctx->sbr_subtitles = sbr_load_text(
+++        ctx->sbr_library,
+++        packet->buffer,
+++        packet->len,
+++        fmt,
+++        NULL
+++    );
+++    packet->sub_duration = packet->duration;
+++}
+++
+++static struct sub_bitmaps *get_bitmaps(struct sd *sd, struct mp_osd_res dim,
+++                                       int format, double pts)
+++{
+++    struct sd_sbr_priv *ctx = sd->priv;
+++    struct mp_subtitle_opts *opts = sd->opts;
+++
+++    ctx->osd = dim;
+++
+++    if (pts == MP_NOPTS_VALUE || !ctx->sbr_renderer || !ctx->sbr_subtitles)
+++        return NULL;
+++
+++    if (opts->sub_forced_events_only)
+++        return NULL;
+++
+++    struct sbr_subtitle_context context = (sbr_subtitle_context) {
+++        .dpi = 72,
+++        .padding_top = (int32_t)dim.mt << 6,
+++        .padding_bottom = (int32_t)dim.mb << 6,
+++        .padding_left = (int32_t)dim.ml << 6,
+++        .padding_right = (int32_t)dim.mr << 6,
+++        .video_height = (int32_t)(dim.h - dim.mt - dim.mb) << 6,
+++        .video_width = (int32_t)(dim.w - dim.ml - dim.mr) << 6,
+++    };
+++
+++    unsigned t = lrint(pts * 1000);
+++
+++    struct sub_bitmaps *bitmaps = ctx->bitmaps;
+++    struct sub_bitmap *bitmap = bitmaps->parts;
+++
+++    bool size_did_change = bitmap->w != dim.w || bitmap->h != dim.h;
+++    if (size_did_change || sbr_renderer_did_change(ctx->sbr_renderer, &context, t)) {
+++        talloc_free(bitmaps->packed);
+++
+++        bitmaps->packed = mp_image_alloc(IMGFMT_BGRA, dim.w, dim.h);
+++        mp_require(bitmaps->packed);
+++        bitmaps->packed_h = dim.h;
+++        bitmaps->packed_w = dim.w;
+++        bitmaps->packed->params.repr.alpha = PL_ALPHA_PREMULTIPLIED;
+++        ++bitmaps->change_id;
+++
+++        bitmap->bitmap = bitmaps->packed->planes[0];
+++        bitmap->w = dim.w;
+++        bitmap->h = dim.h;
+++        bitmap->dw = dim.w;
+++        bitmap->dh = dim.h;
+++        bitmap->stride = (*bitmaps->packed).stride[0];
+++
+++        sbr_renderer_set_subtitles(ctx->sbr_renderer, ctx->sbr_subtitles);
+++        sbr_renderer_render(ctx->sbr_renderer, &context, t, bitmap->bitmap,
+++                            dim.w, dim.h, bitmap->stride >> 2);
+++    }
+++
+++    return sub_bitmaps_copy(NULL, bitmaps);
+++}
+++
+++static void uninit(struct sd *sd)
+++{
+++    struct sd_sbr_priv *ctx = sd->priv;
+++
+++    talloc_free(ctx->bitmaps->packed);
+++    enable_output(sd, false);
+++    if (ctx->sbr_subtitles)
+++        sbr_subtitles_destroy(ctx->sbr_subtitles);
+++    sbr_library_fini(ctx->sbr_library);
+++}
+++
+++static int control(struct sd *sd, enum sd_ctrl cmd, void *arg)
+++{
+++    switch (cmd) {
+++    default:
+++        return CONTROL_UNKNOWN;
+++    }
+++}
+++
+++const struct sd_functions sd_sbr = {
+++    .name = "subrandr",
+++    .accept_packets_in_advance = true,
+++    .init = init,
+++    .decode = decode,
+++    .get_bitmaps = get_bitmaps,
+++    .control = control,
+++    .select = enable_output,
+++    .uninit = uninit,
+++};
++-- 
++2.51.0.windows.1
++
++
++From ade0bcda742a41cc8066c4d74f2dddf0094202b3 Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Hubert=20G=C5=82uchowski?= <fishhh@fishhh.dev>
++Date: Sun, 20 Apr 2025 22:51:08 +0200
++Subject: [PATCH 2/6] player/command: add subrandr-version property
++
++Allows script to detect the presence of subrandr at runtime, useful for
++determining whether this mpv instance can play SRV3 subtitles.
++---
++ DOCS/man/input.rst |  6 ++++++
++ player/command.c   | 19 +++++++++++++++++++
++ 2 files changed, 25 insertions(+)
++
++diff --git a/DOCS/man/input.rst b/DOCS/man/input.rst
++index 02509b1daf..c798c36675 100644
++--- a/DOCS/man/input.rst
+++++ b/DOCS/man/input.rst
++@@ -3951,6 +3951,12 @@ Property list
++     somewhat weird form (apparently "hex BCD"), indicating the release version
++     of the libass library linked to mpv.
++ 
+++``subrandr-version``
+++    The value of ``sbr_library_version()`` as a string in the format
+++    ``<major>.<minor>.<patch>``, indicating the release version of the subrandr
+++    library at runtime. This property is unavailable if mpv is not compiled
+++    with subrandr enabled.
+++
++ ``platform``
++     Returns a string describing what target platform mpv was built for. The value
++     of this is dependent on what the underlying build system detects. Some of the
++diff --git a/player/command.c b/player/command.c
++index baa71228a7..39e5e8f016 100644
++--- a/player/command.c
+++++ b/player/command.c
++@@ -25,7 +25,12 @@
++ #include <math.h>
++ #include <sys/types.h>
++ 
+++#include "config.h" // for HAVE_SUBRANDR
+++
++ #include <ass/ass.h>
+++#if HAVE_SUBRANDR
+++#include <subrandr/subrandr.h>
+++#endif
++ #include <libavutil/avstring.h>
++ #include <libavutil/common.h>
++ #include <libavutil/timecode.h>
++@@ -3748,6 +3753,19 @@ static int mp_property_libass_version(void *ctx, struct m_property *prop,
++     return m_property_int64_ro(action, arg, ass_library_version());
++ }
++ 
+++static int mp_property_subrandr_version(void *ctx, struct m_property *prop,
+++                                      int action, void *arg)
+++{
+++#if HAVE_SUBRANDR
+++    uint32_t major, minor, patch;
+++    sbr_library_version(&major, &minor, &patch);
+++    const char *result = mp_tprintf(33, "%" PRIu32 ".%" PRIu32 ".%" PRIu32, major, minor, patch);
+++    return m_property_strdup_ro(action, arg, result);
+++#else
+++    return M_PROPERTY_UNAVAILABLE;
+++#endif
+++}
+++
++ static int mp_property_platform(void *ctx, struct m_property *prop,
++                                 int action, void *arg)
++ {
++@@ -4531,6 +4549,7 @@ static const struct m_property mp_properties_base[] = {
++     {"mpv-configuration", mp_property_configuration},
++     {"ffmpeg-version", mp_property_ffmpeg},
++     {"libass-version", mp_property_libass_version},
+++    {"subrandr-version", mp_property_subrandr_version},
++     {"platform", mp_property_platform},
++ 
++     {"options", mp_property_options},
++-- 
++2.51.0.windows.1
++
++
++From 23698689cb1470ef0b8880137579c73796b101c2 Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Hubert=20G=C5=82uchowski?= <fishhh@fishhh.dev>
++Date: Sun, 27 Apr 2025 02:31:58 +0200
++Subject: [PATCH 3/6] demux/demux_sbr: allow configuring probe size
++
++---
++ demux/demux_sbr.c | 25 ++++++++++++++++++++++---
++ options/options.c |  6 ++++++
++ options/options.h |  3 +++
++ 3 files changed, 31 insertions(+), 3 deletions(-)
++
++diff --git a/demux/demux_sbr.c b/demux/demux_sbr.c
++index f0accaef00..0326b75617 100644
++--- a/demux/demux_sbr.c
+++++ b/demux/demux_sbr.c
++@@ -30,6 +30,7 @@
++ // regressing the behavior of other formats that were previously rendered
++ // with libass via ffmpeg conversion.
++ 
+++#include <limits.h>
++ #include <math.h>
++ 
++ #include <subrandr/subrandr.h>
++@@ -37,9 +38,28 @@
++ #include "common/common.h"
++ #include "demux/packet.h"
++ #include "misc/bstr.h"
+++#include "options/m_config.h"
+++#include "options/m_option.h"
++ #include "stream/stream.h"
++ #include "demux.h"
++ 
+++#define OPT_BASE_STRUCT struct demux_sbr_opts
+++struct demux_sbr_opts {
+++    int probesize;
+++};
+++
+++const struct m_sub_options demux_sbr_conf = {
+++    .opts = (const m_option_t[]) {
+++        {"probesize", OPT_INT(probesize), M_RANGE(32, INT_MAX)},
+++        {0}
+++    },
+++    .size = sizeof(struct demux_sbr_opts),
+++    .defaults = &(const struct demux_sbr_opts){
+++        .probesize = 128,
+++    },
+++    .change_flags = UPDATE_DEMUXER,
+++};
+++
++ struct format_codec_info {
++     const char *codec;
++     const char *codec_desc;
++@@ -61,8 +81,6 @@ static const struct sub_codec_ext codec_exts[] = {
++     {NULL}
++ };
++ 
++-static const int SUBRANDR_PROBE_SIZE = 128;
++-
++ struct demux_sbr_priv {
++     bstr content;
++     bool exhausted;
++@@ -72,6 +90,7 @@ static int demux_open_sbr(struct demuxer *demuxer, enum demux_check check)
++ {
++     bstr filename = bstr0(demuxer->filename);
++     struct format_codec_info codec_info = {0};
+++    struct demux_sbr_opts *opts = mp_get_config_group(demuxer, demuxer->global, &demux_sbr_conf);
++ 
++     for (const struct sub_codec_ext *ext = codec_exts; ext->ext; ++ext) {
++         if (bstr_endswith0(filename, ext->ext))
++@@ -79,7 +98,7 @@ static int demux_open_sbr(struct demuxer *demuxer, enum demux_check check)
++     }
++ 
++     if (!codec_info.codec) {
++-        int probe_size = stream_peek(demuxer->stream, SUBRANDR_PROBE_SIZE);
+++        int probe_size = stream_peek(demuxer->stream, opts->probesize);
++         uint8_t *probe_buffer = demuxer->stream->buffer;
++ 
++         sbr_subtitle_format fmt = sbr_probe_text((const char *)probe_buffer, (size_t)probe_size);
++diff --git a/options/options.c b/options/options.c
++index 58ae146ea2..f4cf32a8be 100644
++--- a/options/options.c
+++++ b/options/options.c
++@@ -70,6 +70,9 @@ extern const struct m_sub_options demux_rawvideo_conf;
++ extern const struct m_sub_options demux_playlist_conf;
++ extern const struct m_sub_options demux_lavf_conf;
++ extern const struct m_sub_options demux_mkv_conf;
+++#if HAVE_SUBRANDR
+++extern const struct m_sub_options demux_sbr_conf;
+++#endif
++ extern const struct m_sub_options vd_lavc_conf;
++ extern const struct m_sub_options ad_lavc_conf;
++ extern const struct m_sub_options hwdec_conf;
++@@ -693,6 +696,9 @@ static const m_option_t mp_opts[] = {
++     {"demuxer-rawvideo", OPT_SUBSTRUCT(demux_rawvideo, demux_rawvideo_conf)},
++     {"", OPT_SUBSTRUCT(demux_playlist, demux_playlist_conf)},
++     {"demuxer-mkv", OPT_SUBSTRUCT(demux_mkv, demux_mkv_conf)},
+++#if HAVE_SUBRANDR
+++    {"demuxer-sbr", OPT_SUBSTRUCT(demux_sbr, demux_sbr_conf)},
+++#endif
++ 
++ // ------------------------- subtitles options --------------------
++ 
++diff --git a/options/options.h b/options/options.h
++index 6f16f50c25..898285f51a 100644
++--- a/options/options.h
+++++ b/options/options.h
++@@ -365,6 +365,9 @@ typedef struct MPOpts {
++     struct demux_playlist_opts *demux_playlist;
++     struct demux_lavf_opts *demux_lavf;
++     struct demux_mkv_opts *demux_mkv;
+++#if HAVE_SUBRANDR
+++    struct demux_sbr_opts *demux_sbr;
+++#endif
++ 
++     struct demux_opts *demux_opts;
++     struct demux_cache_opts *demux_cache_opts;
++-- 
++2.51.0.windows.1
++
++
++From 3fa18ab838fb0e4e367d6faaeeba71e1ce634991 Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Hubert=20G=C5=82uchowski?= <hubert.gluchowski19@gmail.com>
++Date: Fri, 13 Jun 2025 16:29:48 +0200
++Subject: [PATCH 4/6] sub/sd_sbr: log errors from `sbr_renderer_render`
++
++This function may returns an error, the primary cause for such errors is
++weird or unsupported system font configuration and logging the error is
++very useful for diagnosing such cases. Note that this may result in an
++error being logged every frame.
++---
++ sub/sd_sbr.c | 8 ++++++--
++ 1 file changed, 6 insertions(+), 2 deletions(-)
++
++diff --git a/sub/sd_sbr.c b/sub/sd_sbr.c
++index 716c2c3266..223841764a 100644
++--- a/sub/sd_sbr.c
+++++ b/sub/sd_sbr.c
++@@ -148,8 +148,12 @@ static struct sub_bitmaps *get_bitmaps(struct sd *sd, struct mp_osd_res dim,
++         bitmap->stride = (*bitmaps->packed).stride[0];
++ 
++         sbr_renderer_set_subtitles(ctx->sbr_renderer, ctx->sbr_subtitles);
++-        sbr_renderer_render(ctx->sbr_renderer, &context, t, bitmap->bitmap,
++-                            dim.w, dim.h, bitmap->stride >> 2);
+++        if (sbr_renderer_render(ctx->sbr_renderer, &context, t, bitmap->bitmap,
+++                                dim.w, dim.h, bitmap->stride >> 2) < 0) {
+++            const char *error = sbr_get_last_error_string();
+++            mp_err(sd->log, "Failed to render frame: %s\n", error);
+++            return NULL;
+++        }
++     }
++ 
++     return sub_bitmaps_copy(NULL, bitmaps);
++-- 
++2.51.0.windows.1
++
++
++From 737ab19242ed4f4409599f1d557ce7db658668ff Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Hubert=20G=C5=82uchowski?= <hubert.gluchowski19@gmail.com>
++Date: Fri, 20 Jun 2025 21:19:07 +0200
++Subject: [PATCH 5/6] sub/sd_sbr: log errors from `sbr_load_text`
++
++---
++ sub/sd_sbr.c | 5 +++++
++ 1 file changed, 5 insertions(+)
++
++diff --git a/sub/sd_sbr.c b/sub/sd_sbr.c
++index 223841764a..33c20b1a1a 100644
++--- a/sub/sd_sbr.c
+++++ b/sub/sd_sbr.c
++@@ -98,6 +98,11 @@ static void decode(struct sd *sd, struct demux_packet *packet)
++         NULL
++     );
++     packet->sub_duration = packet->duration;
+++
+++    if (!ctx->sbr_subtitles) {
+++        const char *error = sbr_get_last_error_string();
+++        mp_err(sd->log, "Failed to load subtitles: %s\n", error);
+++    }
++ }
++ 
++ static struct sub_bitmaps *get_bitmaps(struct sd *sd, struct mp_osd_res dim,
++-- 
++2.51.0.windows.1
++
++
++From d37692b803f912e6c650e20c37ab4942f4ff1651 Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Hubert=20G=C5=82uchowski?= <hubert.gluchowski19@gmail.com>
++Date: Sun, 13 Jul 2025 17:54:30 +0200
++Subject: [PATCH 6/6] sub/sd_sbr: add logging callback
++
++---
++ meson.build  |  2 +-
++ sub/sd_sbr.c | 34 ++++++++++++++++++++++++++++++++++
++ 2 files changed, 35 insertions(+), 1 deletion(-)
++
++diff --git a/meson.build b/meson.build
++index b3d1e0581e..04ccf4dfa7 100644
++--- a/meson.build
+++++ b/meson.build
++@@ -358,7 +358,7 @@ if features['libdl']
++     dependencies += libdl
++ endif
++ 
++-subrandr = dependency('subrandr', required: get_option('subrandr'))
+++subrandr = dependency('subrandr', version: '>= 0.1.1', required: get_option('subrandr'))
++ features += {'subrandr': subrandr.found()}
++ if features['subrandr']
++     sources += files('demux/demux_sbr.c', 'sub/sd_sbr.c')
++diff --git a/sub/sd_sbr.c b/sub/sd_sbr.c
++index 33c20b1a1a..843784a326 100644
++--- a/sub/sd_sbr.c
+++++ b/sub/sd_sbr.c
++@@ -19,6 +19,7 @@
++ #include <limits.h>
++ 
++ #include <subrandr/subrandr.h>
+++#include <subrandr/logging.h>
++ 
++ #include "mpv_talloc.h"
++ 
++@@ -53,6 +54,37 @@ static void enable_output(struct sd *sd, bool enable)
++     }
++ }
++ 
+++static inline int mp_level_from_sbr_log_level(sbr_log_level level)
+++{
+++    switch (level) {
+++        case SBR_LOG_LEVEL_TRACE:
+++            return MSGL_TRACE;
+++        case SBR_LOG_LEVEL_DEBUG:
+++            return MSGL_DEBUG;
+++        case SBR_LOG_LEVEL_INFO: // fallthrough
+++        case SBR_LOG_LEVEL_WARN:
+++            return MSGL_V;
+++        case SBR_LOG_LEVEL_ERROR: // fallthrough
+++        default:
+++            return MSGL_WARN;
+++    }
+++}
+++
+++static void mp_msg_sbr_log_callback(sbr_log_level level,
+++                                    const char *source, size_t source_len,
+++                                    const char *message, size_t message_len,
+++                                    void *user_data)
+++{
+++    struct sd *sd = user_data;
+++    int mp_level = mp_level_from_sbr_log_level(level);
+++
+++    if (mp_msg_test(sd->log, mp_level)) {
+++        if (source_len > 0)
+++            mp_msg(sd->log, mp_level, "[%.*s] ", (int)source_len, source);
+++        mp_msg(sd->log, mp_level, "%.*s\n", (int)message_len, message);
+++    }
+++}
+++
++ static int init(struct sd *sd)
++ {
++     if (!sd->codec->codec)
++@@ -65,6 +97,8 @@ static int init(struct sd *sd)
++ 
++     ctx->sbr_library = sbr_library_init();
++     mp_require(ctx->sbr_library);
+++    sbr_library_set_log_callback(ctx->sbr_library, mp_msg_sbr_log_callback, sd);
+++
++     ctx->bitmaps = talloc_zero(ctx, struct sub_bitmaps);
++     ctx->bitmaps->format = SUBBITMAP_BGRA;
++     ctx->bitmaps->num_parts = 1;
++-- 
++2.51.0.windows.1
++
+diff --git a/packages/mpv.cmake b/packages/mpv.cmake
+index f5d4e50..65344c0 100644
+--- a/packages/mpv.cmake
++++ b/packages/mpv.cmake
+@@ -17,6 +17,7 @@ ExternalProject_Add(mpv
+     SOURCE_DIR ${SOURCE_LOCATION}
+     GIT_CLONE_FLAGS "--filter=tree:0"
+     UPDATE_COMMAND ""
++    PATCH_COMMAND ${EXEC} git am --3way ${CMAKE_CURRENT_SOURCE_DIR}/mpv-*.patch || git am --abort
+     CONFIGURE_COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
+         --prefix=${MINGW_INSTALL_PREFIX}
+         --libdir=${MINGW_INSTALL_PREFIX}/lib
+-- 
+2.51.0.windows.1
+
+
+From c7c165a7a96557e2c5b4998297853e8eff3531cd Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Fri, 17 Oct 2025 13:44:01 +0800
+Subject: [PATCH 35/37] libiconv, uchardet: switch to github mirror
+
+---
+ packages/libiconv.cmake | 2 +-
+ packages/uchardet.cmake | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/packages/libiconv.cmake b/packages/libiconv.cmake
+index cd57bf2..522d064 100644
+--- a/packages/libiconv.cmake
++++ b/packages/libiconv.cmake
+@@ -7,7 +7,7 @@ set(VERSION "1.18")
+ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libiconv.pc.in ${CMAKE_CURRENT_BINARY_DIR}/libiconv.pc @ONLY)
+ 
+ ExternalProject_Add(libiconv
+-    URL https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz
++    URL https://github.com/rach-md/mpv-deps/raw/refs/heads/main/libiconv-1.18.tar.gz
+     URL_HASH SHA256=3B08F5F4F9B4EB82F151A7040BFD6FE6C6FB922EFE4B1659C66EA933276965E8
+     DOWNLOAD_DIR ${SOURCE_LOCATION}
+     CONFIGURE_COMMAND ${EXEC} CONF=1 <SOURCE_DIR>/configure
+diff --git a/packages/uchardet.cmake b/packages/uchardet.cmake
+index 4e885f7..aa5d7ab 100644
+--- a/packages/uchardet.cmake
++++ b/packages/uchardet.cmake
+@@ -1,5 +1,5 @@
+ ExternalProject_Add(uchardet
+-    URL https://www.freedesktop.org/software/uchardet/releases/uchardet-0.0.8.tar.xz
++    URL https://github.com/rach-md/mpv-deps/raw/refs/heads/main/uchardet-0.0.8.tar.xz
+     URL_HASH SHA256=e97a60cfc00a1c147a674b097bb1422abd9fa78a2d9ce3f3fdcc2e78a34ac5f0
+     DOWNLOAD_DIR ${SOURCE_LOCATION}
+     CONFIGURE_COMMAND ${EXEC} CONF=1 cmake -H<SOURCE_DIR> -B<BINARY_DIR>
+-- 
+2.51.0.windows.1
+
+
+From ed29f0c0c12f727097d89629b3fbc1dbeab0e4dc Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Wed, 8 Oct 2025 20:31:19 +0800
+Subject: [PATCH 36/37] CMakeLists: detect libmimalloc on github runner
+
+---
+ CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0d1b548..72ca6ce 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -43,6 +43,8 @@ if(EXISTS /usr/lib/libmimalloc.so)
+     set(MALLOC "/usr/lib/libmimalloc.so" CACHE STRING "set malloc implementation")
+ elseif(EXISTS /usr/lib/libjemalloc.so)
+     set(MALLOC "/usr/lib/libjemalloc.so" CACHE STRING "set malloc implementation")
++elseif(EXISTS /usr/lib/${TARGET_CPU}-linux-gnu/libmimalloc.so)
++    set(MALLOC "/usr/lib/${TARGET_CPU}-linux-gnu/libmimalloc.so" CACHE STRING "set malloc implementation")
+ endif()
+ if(EXISTS ${MALLOC})
+     option(LLD_LTO_ALL_THREADS "Allow LLD to use all threads for ThinLTO, non-Glibc malloc implementations can improve performance." ON)
+-- 
+2.51.0.windows.1
+
+
+From 0e9cdf885ba13cf59b383856f2646fba46cd4851 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sun, 19 Oct 2025 22:05:49 +0800
+Subject: [PATCH 37/37] CMakeLists,exec: use github runner rust env
+
+---
+ CMakeLists.txt | 4 +---
+ exec.in        | 4 +---
+ 2 files changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 72ca6ce..0d0447d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -61,7 +61,6 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+ endif()
+ set(MINGW_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/${TARGET_ARCH} CACHE STRING "Target toolchain path")
+ set(SINGLE_SOURCE_LOCATION "" CACHE STRING "Repository or tarball stored path")
+-set(RUSTUP_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/install_rustup" CACHE STRING "Rust toolchain path")
+ set(LLVM_ENABLE_LTO "OFF" CACHE STRING "OFF, ON, Thin and Full")
+ set(LLVM_ENABLE_PGO "OFF" CACHE STRING "OFF, GEN, CSGEN, USE")
+ if(LLVM_ENABLE_PGO STREQUAL "GEN" OR LLVM_ENABLE_PGO STREQUAL "CSGEN")
+@@ -104,7 +103,7 @@ endif()
+ 
+ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/meson_cross.txt.in ${CMAKE_CURRENT_BINARY_DIR}/meson_cross.txt @ONLY)
+ set(MESON_CROSS ${CMAKE_CURRENT_BINARY_DIR}/meson_cross.txt)
+-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cargo_config.in ${RUSTUP_LOCATION}/.cargo/config.toml @ONLY)
++configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cargo_config.in $HOME/.cargo/config.toml @ONLY)
+ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/exec.in ${CMAKE_CURRENT_BINARY_DIR}/exec @ONLY)
+ set(EXEC ${CMAKE_CURRENT_BINARY_DIR}/exec)
+ set(MAKE ${EXEC} make -j${MAKEJOBS})
+@@ -130,7 +129,6 @@ endif()
+ 
+ message(STATUS "MINGW_INSTALL_PREFIX dir: ${MINGW_INSTALL_PREFIX}")
+ message(STATUS "SINGLE_SOURCE_LOCATION dir: ${SINGLE_SOURCE_LOCATION}")
+-message(STATUS "RUSTUP_LOCATION dir: ${RUSTUP_LOCATION}")
+ message(STATUS "Compiler used: ${COMPILER_TOOLCHAIN}")
+ message(STATUS "Malloc: ${MALLOC}")
+ message(STATUS "Ccache: ${ENABLE_CCACHE}")
+diff --git a/exec.in b/exec.in
+index ff1eb8b..9196d8e 100755
+--- a/exec.in
++++ b/exec.in
+@@ -1,10 +1,8 @@
+ #!/bin/bash
+ export O_PATH="$PATH"
+-export PATH="@CMAKE_INSTALL_PREFIX@/bin:@RUSTUP_LOCATION@/.cargo/bin:$PATH"
++export PATH="@CMAKE_INSTALL_PREFIX@/bin:$PATH"
+ export PKG_CONFIG="pkgconf --static"
+ export PKG_CONFIG_LIBDIR="@MINGW_INSTALL_PREFIX@/lib/pkgconfig"
+-export RUSTUP_HOME="@RUSTUP_LOCATION@/.rustup"
+-export CARGO_HOME="@RUSTUP_LOCATION@/.cargo"
+ export LD_PRELOAD="@MALLOC@"
+ export CCACHE_DIR="@MINGW_INSTALL_PREFIX@/ccache"
+ export LLVM_PROFILE_FILE="/dev/null"
+-- 
+2.51.0.windows.1
+

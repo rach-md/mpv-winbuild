@@ -36,8 +36,6 @@ build() {
         echo "Failed compiled $bit-bit. Stop"
         exit 1
     fi
-    
-    ninja -C $buildroot/build$bit cargo-clean
 }
 
 zip() {

@@ -74,7 +74,7 @@ jobs:
     needs: params
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/archlinux/archlinux:base-devel
+      image: quay.io/fedora/fedora:rawhide
     continue-on-error: true
     strategy:
       matrix: ${{ fromJson(needs.params.outputs.matrix) }}
@@ -82,8 +82,7 @@ jobs:
     steps:
       - name: Install Dependencies
         run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm --needed git ninja cmake meson nasm rst2pdf mimalloc ccache 7zip
+          sudo dnf5 install -y --setopt=install_weak_deps=False @development-tools automake autoconf libtool m4 ninja-build cmake meson nasm rst2pdf mimalloc-devel ccache 7zip
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global pull.rebase true
@@ -530,7 +529,7 @@ jobs:
     if: ${{ inputs.no_save_cache != true }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/archlinux/archlinux:base
+      image: quay.io/fedora/fedora:rawhide
     continue-on-error: true
     strategy:
       matrix: ${{ fromJson(needs.params.outputs.matrix_bit) }}
@@ -538,8 +537,7 @@ jobs:
     steps:
       - name: Prepare
         run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm --needed git
+          dnf5 install -y git
       - uses: actions/checkout@v5
 
       - name: Resave Toolchain Cache
@@ -577,14 +575,13 @@ jobs:
     if: ${{ inputs.compiler =='clang' }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/archlinux/archlinux:base
+      image: quay.io/fedora/fedora:rawhide
     continue-on-error: true
 
     steps:
       - name: Prepare
         run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm --needed git
+          dnf5 install -y git
       - uses: actions/checkout@v5
       
       - name: Resave llvm cache

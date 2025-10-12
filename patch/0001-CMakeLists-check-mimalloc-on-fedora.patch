@@ -1,0 +1,25 @@
+From de053cfd5974fd4e4ea06e8e9fa70f9da9b6effd Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sun, 12 Oct 2025 21:58:00 +0800
+Subject: [PATCH] CMakeLists: check mimalloc on fedora
+
+---
+ CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0d1b548..5a2618c 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -43,6 +43,8 @@ if(EXISTS /usr/lib/libmimalloc.so)
+     set(MALLOC "/usr/lib/libmimalloc.so" CACHE STRING "set malloc implementation")
+ elseif(EXISTS /usr/lib/libjemalloc.so)
+     set(MALLOC "/usr/lib/libjemalloc.so" CACHE STRING "set malloc implementation")
++elseif(EXISTS /usr/lib64/libmimalloc.so)
++    set(MALLOC "/usr/lib64/libmimalloc.so" CACHE STRING "set malloc implementation")
+ endif()
+ if(EXISTS ${MALLOC})
+     option(LLD_LTO_ALL_THREADS "Allow LLD to use all threads for ThinLTO, non-Glibc malloc implementations can improve performance." ON)
+-- 
+2.51.0.windows.1
+

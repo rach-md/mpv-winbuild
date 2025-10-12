@@ -54,15 +54,15 @@ jobs:
           echo "cache_suffix=$cache_suffix" >> "$GITHUB_OUTPUT"
       - name: Install Dependencies
         run: |
-          sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git ninja cmake python mimalloc go 7zip
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed git ninja cmake python mimalloc go 7zip
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global pull.rebase true
           git config --global rebase.autoStash true
           git config --global fetch.prune true
-          sudo GOBIN=/usr/bin go install go.chromium.org/luci/cipd/client/cmd/...@latest
-          sudo cipd install fuchsia/third_party/clang/linux-amd64 latest -root /usr/local/fuchsia-clang
+          GOBIN=/usr/bin go install go.chromium.org/luci/cipd/client/cmd/...@latest
+          cipd install fuchsia/third_party/clang/linux-amd64 latest -root /usr/local/fuchsia-clang
           echo "PATH=/usr/local/fuchsia-clang/bin:$PATH" >> $GITHUB_ENV
       - uses: actions/checkout@v5
       - name: Checkout toolchain
@@ -118,7 +118,7 @@ jobs:
       - name: Collect logs
         if: ${{ always() }}
         run: |
-          sudo 7z a logs.7z $(find mpv-winbuild-cmake -type f -iname "*-*.log")
+          7z a logs.7z $(find mpv-winbuild-cmake -type f -iname "*-*.log")
       - name: upload logs
         uses: actions/upload-artifact@v4
         if: ${{ always() }}

@@ -1,0 +1,82 @@
+From 1dc08742459dffa1cbe6ae95129786c03d9144a0 Mon Sep 17 00:00:00 2001
+From: rach-md <rach-md@users.noreply.github.com>
+Date: Sat, 11 Oct 2025 22:08:12 +0800
+Subject: [PATCH] toolchain: add llvm-mingw wrapper
+
+---
+ CMakeLists.txt           |  1 +
+ llvm-mingw-wrapper.cmake | 49 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+)
+ create mode 100644 llvm-mingw-wrapper.cmake
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0d1b548..89a207a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -3,6 +3,7 @@ project(mpv-cross C)
+ include(ProcessorCount)
+ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/download_externalproject.cmake)
+ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/custom_steps.cmake)
++include(${PROJECT_SOURCE_DIR}/llvm-mingw-wrapper.cmake)
+ 
+ cmake_policy(SET CMP0097 NEW)
+ cmake_policy(SET CMP0114 NEW)
+diff --git a/llvm-mingw-wrapper.cmake b/llvm-mingw-wrapper.cmake
+new file mode 100644
+index 0000000..5f2f99d
+--- /dev/null
++++ b/llvm-mingw-wrapper.cmake
+@@ -0,0 +1,49 @@
++find_program(PKGCONFIG NAMES pkgconf)
++set(llvm-mingw "${CMAKE_INSTALL_PREFIX}")
++if(EXISTS "${llvm-mingw}")
++    find_program(PKGCONFIG NAMES pkgconf)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${MINGW_INSTALL_PREFIX})
++    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${MINGW_INSTALL_PREFIX}/lib)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-ar        ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-ar)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-ar        ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-llvm-ar)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-ar        ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-ranlib)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-ar        ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-llvm-ranlib)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-ar        ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-dlltool)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-objcopy   ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-objcopy)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-objcopy   ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-strip)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-size      ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-size)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-strings   ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-strings)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-nm        ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-nm)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-readelf   ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-readelf)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-rc        ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-windres)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-addr2line ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-addr2line)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PKGCONFIG} ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-pkg-config)
++    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PKGCONFIG} ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-pkgconf)
++
++    foreach(compiler clang++ g++ c++ clang gcc as)
++        set(driver_mode "")
++        set(clang_compiler "")
++        set(linker "")
++        
++        if (compiler STREQUAL "g++" OR compiler STREQUAL "c++")
++            set(driver_mode "--driver-mode=g++ -pthread")
++            set(clang_compiler "clang++")
++        elseif(compiler STREQUAL "clang++")
++            set(driver_mode "--driver-mode=g++")
++            set(clang_compiler "clang++")
++            set(linker "-lc++abi")
++        else()
++            set(driver_mode "")
++            set(clang_compiler "clang")
++        endif()
++        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/toolchain/llvm/llvm-compiler.in
++                       ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-${compiler}
++                       FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
++                       @ONLY)
++    endforeach()
++
++    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/toolchain/llvm/llvm-ld.in
++                   ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-ld
++                   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
++                   @ONLY)
++endif()
+\ No newline at end of file
+-- 
+2.51.0.windows.1
+

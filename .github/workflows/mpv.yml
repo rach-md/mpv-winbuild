@@ -243,7 +243,7 @@ jobs:
           mkdir -p ./clang_root
           clang_root=$(pwd)/clang_root
           curl -Lo - https://github.com/mstorsjo/llvm-mingw/releases/download/20251007/llvm-mingw-20251007-ucrt-ubuntu-22.04-x86_64.tar.xz | tar -xJf - -C $clang_root --strip-components=1
-
+          ls -A $clang_root/bin/clang
       - name: Install Rust
         id: install_rust
         shell: bash

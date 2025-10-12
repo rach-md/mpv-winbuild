@@ -106,23 +106,22 @@ jobs:
         uses: ./action/build_toolchain
         if: ${{ inputs.compiler =='clang' }}
         with:
-          bit: "${{ matrix.bit }}"
           compiler: "clang"
-          command: "ninja -C $buildroot/build$bit rebuild_cache && cmake --build $buildroot/build$bit --target llvm-download && ninja -C $buildroot/build$bit llvm-clang"
+          command: "ninja -C $buildroot/build rebuild_cache && cmake --build $buildroot/build --target llvm-download && ninja -C $buildroot/build llvm-clang"
 
       - name: Save Toolchain Cache
         if: ${{ inputs.no_save_cache != true }}
         uses: actions/cache/save@v4.3.0
         with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/build${{ matrix.bit }}
-          key: toolchain-${{ inputs.compiler }}-build${{ matrix.bit }}-${{ needs.params.outputs.cache_suffix }}
+          path: ${{ github.workspace }}/mpv-winbuild-cmake/build
+          key: toolchain-${{ inputs.compiler }}-build-${{ needs.params.outputs.cache_suffix }}
 
       - name: Save clang_root cache
         if: ${{ inputs.compiler =='clang' && inputs.no_save_cache != true }}
         uses: actions/cache/save@v4.3.0
         with: 
           path: ${{ github.workspace }}/mpv-winbuild-cmake/clang_root
-          key: ${{ matrix.bit }}-clang_root-${{ needs.params.outputs.cache_suffix }}
+          key: clang_root-${{ needs.params.outputs.cache_suffix }}
 
       - name: Collect logs
         if: ${{ always() }}
@@ -132,7 +131,7 @@ jobs:
         uses: actions/upload-artifact@v5
         if: ${{ always() }}
         with:
-          name: ${{ matrix.bit }}_logs
+          name: logs
           path: logs.7z
 
   rust:
@@ -190,7 +189,7 @@ jobs:
           script: |
             let build_target=new Set();
             const release = ${{ inputs.release }};
-            const targets = {"build64":"64bit"}
+            const targets = {"build":"64bit"}
             const repo="${{github.repository}}".split('/')[1];
             const cache_suffix="${{ needs.params.outputs.cache_suffix }}";
             const cache = await github.rest.actions.getActionsCacheList({

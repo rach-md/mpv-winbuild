@@ -82,12 +82,13 @@ jobs:
     steps:
       - name: Install Dependencies
         run: |
-          sudo dnf5 install -y --setopt=install_weak_deps=False @development-tools automake autoconf libtool m4 ninja-build cmake meson nasm rst2pdf mimalloc-devel ccache 7zip
+          sudo dnf5 install -y automake autoconf gettext libtool make git ninja-build cmake meson nasm rst2pdf mimalloc-devel ccache 7zip
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global pull.rebase true
           git config --global rebase.autoStash true
           git config --global fetch.prune true
+          ln -s /usr/lib64/ccache /usr/lib/ccache
       - uses: actions/checkout@v5
       - name: Checkout toolchain
         uses: actions/checkout@v5

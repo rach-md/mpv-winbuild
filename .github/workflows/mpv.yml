@@ -145,7 +145,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git ninja cmake meson clang lld libc++ unzip ragel yasm nasm gperf rst2pdf python-cairo curl wget mimalloc ccache 7zip
+          sudo pacman -S --noconfirm --needed git ninja cmake meson nasm rst2pdf mimalloc ccache 7zip
           sudo pacman -U --noconfirm https://archive.archlinux.org/packages/p/python-docutils/python-docutils-1%3A0.21.2-3-any.pkg.tar.zst
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -613,7 +613,7 @@ jobs:
       - name: Prepare
         run: |
           sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git curl
+          sudo pacman -S --noconfirm --needed git
       - uses: actions/checkout@v5
 
       - name: Resave Toolchain Cache
@@ -658,7 +658,7 @@ jobs:
       - name: Prepare
         run: |
           sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git curl
+          sudo pacman -S --noconfirm --needed git
       - uses: actions/checkout@v5
       
       - name: Resave llvm cache

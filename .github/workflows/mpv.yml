@@ -45,14 +45,18 @@ on:
         required: false
 
 jobs:
-  params:
+  build_mpv:
+    name: Build mpv
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/archlinux/archlinux:base-devel
     outputs:
-      sha: ${{ steps.script.outputs.sha }}
-      matrix: ${{ steps.script.outputs.matrix }}
-      matrix_bit: ${{ steps.script.outputs.matrix_bit }}
+      sha: ${{ steps.get_sha.outputs.sha }}
+    continue-on-error: true
+
     steps:
-      - id: script
+      - name: Get mpv latest commit sha
+        id: get_sha
         uses: actions/github-script@v8
         with:
           script: |
@@ -62,24 +66,6 @@ jobs:
               ref: `master`
             })
             core.setOutput('sha', String(commit.data.sha))
-            
-            let matrix = {};
-            let build_target = "${{ inputs.build_target }}"
-            matrix.bit = ["64"];
-            core.setOutput("matrix_bit",JSON.stringify(matrix));
-            core.setOutput("matrix",JSON.stringify(matrix));
-
-  build_mpv:
-    name: Build mpv
-    needs: params
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/archlinux/archlinux:base-devel
-    continue-on-error: true
-    strategy:
-      matrix: ${{ fromJson(needs.params.outputs.matrix) }}
-
-    steps:
       - name: Install Dependencies
         run: |
           sudo tee -a /etc/pacman.conf >/dev/null
@@ -102,7 +88,7 @@ jobs:
           fetch-depth: 0
       - name: Prepare
         run: |
-          echo "sha=${{ needs.params.outputs.sha }}" >> $GITHUB_ENV
+          echo "sha=${{ steps.get_sha.outputs.sha }}" >> $GITHUB_ENV
           echo "short_time=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
           echo "cache_suffix=$(date "+%Y-%m-%d")-${{ github.run_id }}-${{ github.run_attempt }}" >> $GITHUB_ENV
           cd mpv-winbuild-cmake
@@ -434,7 +420,7 @@ jobs:
 
   publish_release:
     name: Publish release
-    needs: [build_mpv,params]
+    needs: [build_mpv]
     if: ${{ inputs.release == true }}
     runs-on: ubuntu-latest
     permissions:
@@ -465,7 +451,7 @@ jobs:
         run: |
           echo "long_time=$(date "+%Y-%m-%d %H:%M")" >> $GITHUB_ENV
           echo "short_time=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
-          echo "tag_name=$(date "+%Y-%m-%d")-$(head -c 7 <<< "${{needs.params.outputs.sha}}")"  >> $GITHUB_ENV
+          echo "tag_name=$(date "+%Y-%m-%d")-$(head -c 7 <<< "${{needs.build_mpv.outputs.sha}}")"  >> $GITHUB_ENV
 
       - name: Commit version & remove existing tag
         env:
@@ -492,7 +478,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const sha = `${{ needs.params.outputs.sha }}`;
+            const sha = `${{ needs.build_mpv.outputs.sha }}`;
             let note = `**mpv Git commit**: https://github.com/mpv-player/mpv/commit/${sha}\n`;
             note+="**Build Time**: ${{ env.long_time }}\n";
             note+="**Compiler**: ${{ inputs.compiler }}\n";
@@ -533,14 +519,12 @@ jobs:
 
   cache:
     name: keep cache alive
-    needs: [params,build_mpv]
+    needs: [build_mpv]
     if: ${{ inputs.no_save_cache != true }}
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/archlinux/archlinux:base-devel
     continue-on-error: true
-    strategy:
-      matrix: ${{ fromJson(needs.params.outputs.matrix_bit) }}
 
     steps:
       - name: Prepare
@@ -580,7 +564,7 @@ jobs:
           
   cache_llvm:
     name: keep llvm cache alive
-    needs: [params,build_mpv]
+    needs: [build_mpv]
     if: ${{ inputs.no_save_cache != true && inputs.compiler =='clang' }}
     runs-on: ubuntu-latest
     container:

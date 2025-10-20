@@ -39,37 +39,22 @@ on:
         required: false
 
 jobs:
-  params:
+  build:
+    name: Build Toolchain
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/archlinux/archlinux:base-devel
     outputs:
-      matrix: ${{ steps.script.outputs.matrix }}
       cache_suffix: ${{ steps.suffix.outputs.cache_suffix }}
-    steps:
-      - id: script
-        uses: actions/github-script@v8
-        with:
-          script: |
-            let matrix = {};
-            let build_target = "${{ inputs.build_target }}"
-            matrix.bit = ["64"];
-            core.setOutput("matrix",JSON.stringify(matrix));
+    continue-on-error: true
 
-      - id: suffix
+    steps:
+      - name: Generate cache suffix
+        id: suffix
         run: |
           cache_suffix="$(date "+%Y-%m-%d")-${{ github.run_id }}-${{ github.run_attempt }}"
           echo "cache_suffix=$cache_suffix" >> "$GITHUB_OUTPUT"
 
-  build:
-    name: Build Toolchain
-    needs: [params]
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/archlinux/archlinux:base-devel
-    continue-on-error: true
-    strategy:
-      matrix: ${{ fromJson(needs.params.outputs.matrix) }}
-
-    steps:
       - name: Install Dependencies
         run: |
           sudo tee -a /etc/pacman.conf >/dev/null
@@ -98,7 +83,7 @@ jobs:
           fail-on-cache-miss: true
           path: |
             mpv-winbuild-cmake/clang_root
-          key: llvm-${{ needs.params.outputs.cache_suffix }}
+          key: llvm-${{ steps.suffix.outputs.cache_suffix }}
           restore-keys: |
             llvm-
 
@@ -114,14 +99,14 @@ jobs:
         uses: actions/cache/save@v4.3.0
         with:
           path: ${{ github.workspace }}/mpv-winbuild-cmake/build
-          key: toolchain-${{ inputs.compiler }}-build-${{ needs.params.outputs.cache_suffix }}
+          key: toolchain-${{ inputs.compiler }}-build-${{ steps.suffix.outputs.cache_suffix }}
 
       - name: Save clang_root cache
         if: ${{ inputs.compiler =='clang' && inputs.no_save_cache != true }}
         uses: actions/cache/save@v4.3.0
         with: 
           path: ${{ github.workspace }}/mpv-winbuild-cmake/clang_root
-          key: clang_root-${{ needs.params.outputs.cache_suffix }}
+          key: clang_root-${{ steps.suffix.outputs.cache_suffix }}
 
       - name: Collect logs
         if: ${{ always() }}
@@ -136,7 +121,6 @@ jobs:
 
   rust:
     name: Install Rust Toolchain
-    needs: [params]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/archlinux/archlinux:base-devel
@@ -175,7 +159,7 @@ jobs:
           key: rust-${{ needs.params.outputs.cache_suffix }}
 
   trigger:
-    needs: [build,params,rust]
+    needs: [build,rust]
     if: ${{ always() && inputs.trigger_build != false && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-latest
     permissions:
@@ -191,7 +175,7 @@ jobs:
             const release = ${{ inputs.release }};
             const targets = {"build":"64bit"}
             const repo="${{github.repository}}".split('/')[1];
-            const cache_suffix="${{ needs.params.outputs.cache_suffix }}";
+            const cache_suffix="${{ needs.build.outputs.cache_suffix }}";
             const cache = await github.rest.actions.getActionsCacheList({
               owner: '${{github.repository_owner}}',
               repo,

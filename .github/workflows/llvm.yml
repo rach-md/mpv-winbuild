@@ -47,7 +47,7 @@ jobs:
     container:
       image: ghcr.io/archlinux/archlinux:base-devel
     steps:
-      - name: suffix
+      - name: Generate cache suffix
         id: suffix
         run: |
           cache_suffix="$(date "+%Y-%m-%d")-${{ github.run_id }}-${{ github.run_attempt }}"

@@ -1,36 +1,43 @@
-From 1dc08742459dffa1cbe6ae95129786c03d9144a0 Mon Sep 17 00:00:00 2001
+From 4c7a89f89b07c70961765f0731d0baaf60af28c6 Mon Sep 17 00:00:00 2001
 From: rach-md <rach-md@users.noreply.github.com>
 Date: Sat, 11 Oct 2025 22:08:12 +0800
 Subject: [PATCH] toolchain: add llvm-mingw wrapper
 
 ---
- CMakeLists.txt           |  1 +
- llvm-mingw-wrapper.cmake | 49 ++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 50 insertions(+)
+ CMakeLists.txt                  |  2 ++
+ llvm-mingw-wrapper.cmake        | 48 +++++++++++++++++++++++++++++++++
+ toolchain/llvm/llvm-compiler.in |  2 +-
+ 3 files changed, 51 insertions(+), 1 deletion(-)
  create mode 100644 llvm-mingw-wrapper.cmake
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 0d1b548..89a207a 100644
+index 0d1b548..7378dc4 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -3,6 +3,7 @@ project(mpv-cross C)
  include(ProcessorCount)
  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/download_externalproject.cmake)
  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/custom_steps.cmake)
-+include(${PROJECT_SOURCE_DIR}/llvm-mingw-wrapper.cmake)
++include(${CMAKE_CURRENT_SOURCE_DIR}/llvm-mingw-wrapper.cmake)
  
  cmake_policy(SET CMP0097 NEW)
  cmake_policy(SET CMP0114 NEW)
+@@ -133,6 +134,7 @@ message(STATUS "Compiler used: ${COMPILER_TOOLCHAIN}")
+ message(STATUS "Malloc: ${MALLOC}")
+ message(STATUS "Ccache: ${ENABLE_CCACHE}")
+ message(STATUS "Target toolchain to build: ${TARGET_ARCH}")
++message(STATUS "Wrapper: ${WRAPPER}")
+ 
+ add_subdirectory(toolchain)
+ add_subdirectory(packages)
 diff --git a/llvm-mingw-wrapper.cmake b/llvm-mingw-wrapper.cmake
 new file mode 100644
-index 0000000..5f2f99d
+index 0000000..256db55
 --- /dev/null
 +++ b/llvm-mingw-wrapper.cmake
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,48 @@
 +find_program(PKGCONFIG NAMES pkgconf)
-+set(llvm-mingw "${CMAKE_INSTALL_PREFIX}")
-+if(EXISTS "${llvm-mingw}")
-+    find_program(PKGCONFIG NAMES pkgconf)
++if(EXISTS "${CMAKE_INSTALL_PREFIX}")
 +    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${MINGW_INSTALL_PREFIX})
 +    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${MINGW_INSTALL_PREFIX}/lib)
 +    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_INSTALL_PREFIX}/bin/llvm-ar        ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-ar)
@@ -53,7 +60,7 @@ index 0000000..5f2f99d
 +        set(driver_mode "")
 +        set(clang_compiler "")
 +        set(linker "")
-+        
++
 +        if (compiler STREQUAL "g++" OR compiler STREQUAL "c++")
 +            set(driver_mode "--driver-mode=g++ -pthread")
 +            set(clang_compiler "clang++")
@@ -75,8 +82,20 @@ index 0000000..5f2f99d
 +                   ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_ARCH}-ld
 +                   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 +                   @ONLY)
++    set(WRAPPER "Creating wrapper success" CACHE STRING "Creating wrapper success")
 +endif()
-\ No newline at end of file
+diff --git a/toolchain/llvm/llvm-compiler.in b/toolchain/llvm/llvm-compiler.in
+index b16aede..3238af3 100644
+--- a/toolchain/llvm/llvm-compiler.in
++++ b/toolchain/llvm/llvm-compiler.in
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ PROG=@CMAKE_INSTALL_PREFIX@/bin/@clang_compiler@
+-FLAGS="$FLAGS -target @TARGET_CPU@-pc-windows-gnu"
++FLAGS="$FLAGS -target @TARGET_CPU@-w64-windows-gnu"
+ FLAGS="$FLAGS @driver_mode@ --sysroot @MINGW_INSTALL_PREFIX@"
+ FLAGS="$FLAGS -fuse-ld=lld --ld-path=@TARGET_ARCH@-ld"
+ FLAGS="$FLAGS -Wno-unused-command-line-argument"
 -- 
 2.51.0.windows.1
 

@@ -240,10 +240,10 @@ jobs:
         shell: bash
         run: |
           cd mpv-winbuild-cmake
-          mkdir -p ./clang_root
-          clang_root=$(pwd)/clang_root
-          curl -Lo - https://github.com/mstorsjo/llvm-mingw/releases/download/20251007/llvm-mingw-20251007-ucrt-ubuntu-22.04-x86_64.tar.xz | tar -xJf - -C $clang_root --strip-components=1
-          ls -A $clang_root/bin/clang
+          mkdir -p ./build/install
+          install=$(pwd)/build/install
+          curl -Lo - https://github.com/mstorsjo/llvm-mingw/releases/download/20251021/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64.tar.xz | tar -xJf - -C $install --strip-components=1
+          ls -A $install/bin/clang
       - name: Install Rust
         id: install_rust
         shell: bash
@@ -260,7 +260,6 @@ jobs:
         run: |
           cd mpv-winbuild-cmake
           gitdir=$(pwd)
-          clang_root=$(pwd)/clang_root
           buildroot=$(pwd)
           srcdir=$(pwd)/src_packages
           bit="64"
@@ -268,19 +267,19 @@ jobs:
           compiler="clang"
           mkdir -p ./release
 
-          cmake -Wno-dev --fresh -DTARGET_ARCH=$arch-w64-mingw32 -DCOMPILER_TOOLCHAIN=$compiler -DCMAKE_INSTALL_PREFIX=$clang_root -DMINGW_INSTALL_PREFIX=$buildroot/build$bit/install/$arch-w64-mingw32 -DCLANG_PACKAGES_LTO=ON $extra_option -DENABLE_CCACHE=ON -DSINGLE_SOURCE_LOCATION=$srcdir -DRUSTUP_LOCATION=$buildroot/install_rustup -G Ninja -H$gitdir -B$buildroot/build$bit
-          ninja -C $buildroot/build$bit download || true
-          ninja -C $buildroot/build$bit update
-          ninja -C $buildroot/build$bit mpv-fullclean
-          ninja -C $buildroot/build$bit mpv
-          if [ -n "$(find $buildroot/build$bit -maxdepth 1 -type d -name "mpv*" -print -quit)" ] ; then
+          cmake -Wno-dev --fresh -DTARGET_ARCH=$arch-w64-mingw32 -DCOMPILER_TOOLCHAIN=$compiler -DCMAKE_INSTALL_PREFIX=$buildroot/build/install -DMINGW_INSTALL_PREFIX=$buildroot/build/install/$arch-w64-mingw32 -DCLANG_PACKAGES_LTO=ON $extra_option -DENABLE_CCACHE=ON -DSINGLE_SOURCE_LOCATION=$srcdir -DRUSTUP_LOCATION=$buildroot/install_rustup -G Ninja -H$gitdir -B$buildroot/build
+          ninja -C $buildroot/build download || true
+          ninja -C $buildroot/build update
+          ninja -C $buildroot/build mpv-fullclean
+          ninja -C $buildroot/build mpv
+          if [ -n "$(find $buildroot/build -maxdepth 1 -type d -name "mpv*" -print -quit)" ] ; then
               echo "Successfully compiled $bit-bit. Continue"
           else
               echo "Failed compiled $bit-bit. Stop"
               exit 1
           fi
 
-          mv $buildroot/build$bit/mpv* $gitdir/release
+          mv $buildroot/build/mpv* $gitdir/release
           cd $gitdir/release
           for dir in ./mpv*; do
               if [ -d $dir ]; then
@@ -289,13 +288,13 @@ jobs:
               fi
           done
           cd ..
-          sudo rm -rf $buildroot/build$bit/mpv-*
-          sudo chmod -R a+rwx $buildroot/build$bit
+          sudo rm -rf $buildroot/build/mpv-*
+          sudo chmod -R a+rwx $buildroot/build
 
       - name: Collect logs
         if: ${{ always() }}
         run: |
-          sudo 7z a logs.7z $(find mpv-winbuild-cmake/build${{ matrix.bit }} -type f -iname "*-*.log" -or -wholename "*/ffbuild/config.log")
+          sudo 7z a logs.7z $(find mpv-winbuild-cmake/build -type f -iname "*-*.log" -or -wholename "*/ffbuild/config.log")
       - name: upload logs
         uses: actions/upload-artifact@v4
         if: ${{ always() }}

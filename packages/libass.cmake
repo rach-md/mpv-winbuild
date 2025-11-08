@@ -24,8 +24,8 @@ ExternalProject_Add(libass
         -Dprofile=disabled
         -Dfuzz=disabled
         -Dcheckasm=disabled
-    BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
-    INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+    BUILD_COMMAND ${EXEC} meson compile -C <BINARY_DIR>
+    INSTALL_COMMAND ${EXEC} meson install -C <BINARY_DIR>
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 

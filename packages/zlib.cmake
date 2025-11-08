@@ -15,7 +15,7 @@ ExternalProject_Add(zlib
         -DZLIB_BUILD_TESTING=OFF
         -DZLIB_INSTALL_COMPAT_DLL=OFF
     BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
-    INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+    INSTALL_COMMAND ${EXEC} ${CMAKE_COMMAND} --install <BINARY_DIR>
             COMMAND ${CMAKE_COMMAND} -E rename ${MINGW_INSTALL_PREFIX}/lib/libzs.a
                                                ${MINGW_INSTALL_PREFIX}/lib/libz.a
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1

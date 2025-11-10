@@ -371,7 +371,7 @@ jobs:
         with:
           script: |
             const path = require('path');
-            const types = ["mpv-debug", "mpv-dev", "mpv"];
+            const types = ["mpv"];
             const lgpl = ${{ matrix.lgpl }} ? "-lgpl" : "";
             for (let type of types) {
               const globber = await glob.create(`mpv-winbuild-cmake/release/${type}${lgpl}-*.7z`);
@@ -382,19 +382,7 @@ jobs:
                 core.exportVariable( `${type}_path`, file );
               }
             }
-            
-      - name: upload mpv-debug
-        uses: actions/upload-artifact@v5
-        if: ${{ env.mpv-debug_name && env.mpv-debug_path }}
-        with:
-          name: ${{ env.mpv-debug_name }}
-          path: ${{ env.mpv-debug_path }}
-      - name: upload mpv-dev
-        uses: actions/upload-artifact@v5
-        if: ${{ env.mpv-dev_name && env.mpv-dev_path }}
-        with:
-          name: ${{ env.mpv-dev_name }}
-          path: ${{ env.mpv-dev_path }}
+
       - name: upload mpv
         uses: actions/upload-artifact@v5
         if: ${{ env.mpv_name && env.mpv_path }}

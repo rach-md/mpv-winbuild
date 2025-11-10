@@ -1,5 +1,5 @@
 name: mpv
-run-name: "${{ inputs.run_name != '' && format('{0} ({1})', inputs.run_name, inputs.compiler) || inputs.prs != '' && format('{0}[{2}] ({1})', github.workflow, inputs.compiler, inputs.prs) || format('{0} ({1})', github.workflow, inputs.compiler) }}"
+run-name: "${{ inputs.run_name != '' && format('{0} ({1})', inputs.run_name, inputs.compiler) || format('{0} ({1})', github.workflow, inputs.compiler) }}"
 
 permissions:
   actions: write
@@ -40,9 +40,6 @@ on:
       command:
         description: 'input command you want to run before build'
         required: false
-      prs:
-        description: "Input the pr numbers of mpv,split items by comma(',')"
-        required: false
       run_name:
         description: 'The name displayed in the list of workflow runs'
         required: false
@@ -54,7 +51,6 @@ jobs:
       sha: ${{ steps.script.outputs.sha }}
       matrix: ${{ steps.script.outputs.matrix }}
       matrix_bit: ${{ steps.script.outputs.matrix_bit }}
-      patch_note: ${{ steps.script.outputs.patch_note }}
     steps:
       - id: script
         uses: actions/github-script@v8
@@ -72,64 +68,6 @@ jobs:
             matrix.bit = ["64"];
             core.setOutput("matrix_bit",JSON.stringify(matrix));
             core.setOutput("matrix",JSON.stringify(matrix));
-
-            const fs = require('fs/promises');
-            const sleep = ms => new Promise(res => setTimeout(res, ms));
-            const waitingMergeability = async(o)=>{
-              let count = 0;
-              while (count<5) {
-                count = count + 1;
-                const res = await github.rest.pulls.get(o);
-                // If the 'mergeable' is 'null', waiting for GitHub to compute the mergeability
-                if (res.data.merged || res.data.mergeable != null) return res;
-                if (count<5) await sleep(300*2**count);
-              }
-            };
-            let prs = "${{ inputs.prs }}".split(',').map(e=>e.trim());
-            let i = 1;
-            let patch_note = "";
-
-            for (const pr of prs) {
-              let pr_number = parseInt(pr);
-              if (isNaN(pr_number)) {
-                console.warn(`'${pr}' is not a number.`);
-                continue;
-              }
-              
-              try {
-                const res = await waitingMergeability({
-                  owner: "mpv-player",
-                  repo: "mpv",
-                  pull_number: pr_number,
-                });
-                if( res === undefined || res.data.merged || !res.data.mergeable ) {
-                  console.warn(`Pr#${pr_number} can't merged because it has been merged or has conflicts with the base branch.`);
-                  continue;
-                }
-                const {status,data:content} = await github.request(res.data.patch_url);
-                const name = res.data.title.replace(/[/\\?%*:|`'"<> ]/g,'-').replace(/--+/g,'-');
-                await fs.writeFile(`mpv-${String(i).padStart(4,'0')}-#${pr_number}-${name}.patch`, content)
-                  .then( ()=>{ i++; patch_note+=`- [#${pr_number}](${res.data.html_url}): ${res.data.title.replace(/`/g, '\\`')}\n`; })
-                  .catch(err => console.log(err));
-                console.log(`Download patch of #${pr_number}: ${res.data.title}.`)
-              } catch(error) {
-                if (error?.response) {
-                  console.warn(`Get pr#${pr_number} failed: ${error.response.data.message}.`);
-                } else {
-                  console.warn(error);
-                }
-                continue;
-              };
-            }
-
-            core.setOutput("patch_note",patch_note.trim());
-      
-      - name: upload patch
-        uses: actions/upload-artifact@v5
-        if: ${{ steps.script.outputs.patch_note }}
-        with:
-          name: mpv-patch
-          path: "*.patch"
 
   build_mpv:
     name: Build mpv
@@ -272,34 +210,6 @@ jobs:
             max_size=500M
             sloppiness=locale,time_macros
             compiler_check=none
-
-      - name: Download mpv patch
-        if: ${{ needs.params.outputs.patch_note }}
-        uses: actions/download-artifact@v6
-        with:
-          name: mpv-patch
-          path: mpv-patch
-      - name: Apply mpv pr releated patch
-        if: ${{ needs.params.outputs.patch_note }}
-        continue-on-error: true
-        run: |
-          shopt -s globstar
-          cp mpv-patch/*.patch mpv-winbuild-cmake/packages
-          ls mpv-winbuild-cmake/packages/mpv-*.patch
-          cd mpv-winbuild-cmake
-          if [[ "$(ls -A ../patch_pr/0000-*.patch)" ]]; then
-            for patch in ../patch_pr/0000-*.patch ; do
-              git am --3way "$patch" || git am --abort
-            done
-          fi
-          for patch in packages/mpv-*.patch ; do
-            pr="$(echo ${patch#*#} | cut -d- -f1)"
-            if [[ "$(ls -A ../patch_pr/#${pr}-*.patch)" ]]; then
-              for p in ../patch_pr/#${pr}-*.patch ; do
-                git am --3way "$p" || git am --abort
-              done
-            fi
-          done
 
       - name: Running custom command
         if: ${{ inputs.command != '' }}
@@ -490,11 +400,6 @@ jobs:
             core.summary
               .addRaw(`mpv-winbuild-cmake: ${upstream_status} (remote:<a href="${upstream_url}">${upstream_remote_hash.slice(0,7)}</a>)`,true)
               .addRaw(`Compiler: ${compiler_version}`,true);
-            const patch_note = `${{ needs.params.outputs.patch_note }}`;
-            if (patch_note) {
-              core.summary.addHeading('Merged Prs');
-              core.summary.addList(patch_note.replace(/- \[(?<pr>#\d+)\]\((?<url>.*)\)/g,"<a href='$<url>'>$<pr></a>").replace(/`(?<code>[^`]+)`/g, '<code>$<code></code>').split('\n'));
-            }
             await core.summary.addDetails('Packages Version',packages_table).write();
 
 
@@ -563,10 +468,6 @@ jobs:
             note+="**Build Time**: ${{ env.long_time }}\n";
             note+="**Compiler**: ${{ inputs.compiler }}\n";
             note+="**Build Details**: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}\n";
-            const patch_note = `${{ needs.params.outputs.patch_note }}` ;
-            if (patch_note) {
-              note+=`Merged Prs:\n${patch_note}\n`;
-            }
             core.setOutput("note",note);
 
       - name: Delete previous mpv release and tag

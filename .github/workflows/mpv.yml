@@ -21,15 +21,13 @@ jobs:
   build_mpv:
     name: Build mpv
     runs-on: ubuntu-latest
+    container:
+      image: quay.io/fedora/fedora:rawhide
     continue-on-error: true
     steps:
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y nasm libmimalloc2.0
-          pip install --user meson rst2pdf
-          rustup update
-          rustup target add x86_64-pc-windows-gnullvm
+          sudo dnf install -y --setopt=install_weak_deps=False 7zip cmake git-core jq libtool meson mimalloc nasm pkgconf python3-jinja2 rst2pdf
       - name: Setup git config
         run: |
           git config --global user.name "github-actions[bot]"
@@ -50,12 +48,19 @@ jobs:
                      https://api.github.com/repos/mstorsjo/llvm-mingw/releases/latest \
                      | jq -r '.assets[] | select(.browser_download_url | match("ucrt-ubuntu.*x86_64")) | .browser_download_url')
           curl -Lo - $url | tar -xJf - -C $PWD/build/install --strip-components=1 --exclude "aarch64*" --exclude "arm64ec*" --exclude "armv7*"
+      - name: Install Rust toolchain
+        id: install_rust
+        run: |
+          export RUSTUP_HOME="$PWD/install_rustup/.rustup"
+          export CARGO_HOME="$PWD/install_rustup/.cargo"
+          curl -sSf https://sh.rustup.rs \
+          | sh -s -- -y --default-toolchain stable --target x86_64-pc-windows-gnullvm --no-modify-path --profile minimal
       - name: Build
         id: build
         run: |
           mkdir -p release
 
-          cmake -Wno-dev --fresh -DTARGET_ARCH=x86_64-w64-mingw32 -DCOMPILER_TOOLCHAIN=clang -DCMAKE_INSTALL_PREFIX=$PWD/build/install -DMINGW_INSTALL_PREFIX=$PWD/build/install/x86_64-w64-mingw32 -DCLANG_PACKAGES_LTO=ON -DSINGLE_SOURCE_LOCATION=$PWD/src_packages -DRUSTUP_LOCATION=$HOME -G Ninja -B $PWD/build -S $PWD
+          cmake -Wno-dev --fresh -DTARGET_ARCH=x86_64-w64-mingw32 -DCOMPILER_TOOLCHAIN=clang -DCMAKE_INSTALL_PREFIX=$PWD/build/install -DMINGW_INSTALL_PREFIX=$PWD/build/install/x86_64-w64-mingw32 -DCLANG_PACKAGES_LTO=ON -DSINGLE_SOURCE_LOCATION=$PWD/src_packages -DRUSTUP_LOCATION=$PWD/install_rustup -G Ninja -B $PWD/build -S $PWD
 
           ninja -C $PWD/build download || true
           ninja -C $PWD/build update

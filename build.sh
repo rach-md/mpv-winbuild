@@ -9,11 +9,8 @@ main() {
     bit="64"
     arch="x86_64"
     compiler="clang"
-    simple_package=$1
-
-    prepare
+    mkdir -p ./release
     package
-    rm -rf ./release/mpv-packaging-master
 }
 
 package() {
@@ -53,10 +50,6 @@ build() {
 
 zip() {
     mv $buildroot/build$bit/mpv-* $gitdir/release
-    if [ "$simple_package" != "true" ]; then
-        cd $gitdir/release/mpv-packaging-master
-        cp -r ./mpv-root/* ../mpv-$arch*
-    fi
     cd $gitdir/release
     for dir in ./mpv*$arch*; do
         if [ -d $dir ]; then
@@ -67,37 +60,11 @@ zip() {
     cd ..
 }
 
-download_mpv_package() {
-    local package_url="https://codeload.github.com/zhongfly/mpv-packaging/zip/master"
-    if [ -e mpv-packaging.zip ]; then
-        echo "Package exists. Check if it is newer.."
-        remote_commit=$(git ls-remote https://github.com/zhongfly/mpv-packaging.git master | awk '{print $1;}')
-        local_commit=$(unzip -z mpv-packaging.zip | tail +2)
-        if [ "$remote_commit" != "$local_commit" ]; then
-            wget -qO mpv-packaging.zip $package_url
-        fi
-    else
-        wget -qO mpv-packaging.zip $package_url
-    fi
-    unzip -o mpv-packaging.zip
-}
-
-prepare() {
-    mkdir -p ./release
-    if [ "$simple_package" != "true" ]; then
-        cd ./release
-        download_mpv_package
-        cd ./mpv-packaging-master
-        cd ../..
-    fi
-}
-
-while getopts s:e: flag
+while getopts e: flag
 do
     case "${flag}" in
-        s) simple_package=${OPTARG};;
         e) extra_option=${OPTARG};;
     esac
 done
 
-main "${simple_package:-false}"
+main

@@ -42,8 +42,6 @@ jobs:
   build:
     name: Build Toolchain
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/archlinux/archlinux:base-devel
     outputs:
       cache_suffix: ${{ steps.suffix.outputs.cache_suffix }}
     continue-on-error: true
@@ -54,14 +52,10 @@ jobs:
         run: |
           cache_suffix="$(date "+%Y-%m-%d")-${{ github.run_id }}-${{ github.run_attempt }}"
           echo "cache_suffix=$cache_suffix" >> "$GITHUB_OUTPUT"
-
       - name: Install Dependencies
         run: |
-          sudo tee -a /etc/pacman.conf >/dev/null
-          sudo pacman-key --init
-          sudo pacman-key --populate archlinux
-          sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git ninja cmake python mimalloc 7zip unzip
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libmimalloc-dev
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global pull.rebase true
@@ -122,15 +116,11 @@ jobs:
   rust:
     name: Install Rust Toolchain
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/archlinux/archlinux:base-devel
     continue-on-error: true
 
     steps:
       - name: Install Dependencies
         run: |
-          sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git ninja cmake unzip
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global pull.rebase true

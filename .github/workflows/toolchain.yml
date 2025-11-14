@@ -72,7 +72,7 @@ jobs:
     steps:
       - name: Install Dependencies
         run: |
-          sudo echo -e "[multilib]\nInclude = /etc/pacman.d/mirrorlist" | sudo tee -a /etc/pacman.conf >/dev/null
+          sudo tee -a /etc/pacman.conf >/dev/null
           sudo pacman-key --init
           sudo pacman-key --populate archlinux
           sudo pacman -Syu --noconfirm

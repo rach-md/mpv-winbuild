@@ -553,7 +553,7 @@ jobs:
           fi
           git checkout main
 
-      - name: "Generate release note & sha256"
+      - name: "Generate release note"
         id: note
         uses: actions/github-script@v8
         with:
@@ -567,47 +567,13 @@ jobs:
             if (patch_note) {
               note+=`Merged Prs:\n${patch_note}\n`;
             }
-            note+="**Download Tips:**\n";
-            const path = require('path');
-            const tips = {
-              "x86_64": "for 64 bit system",
-            }
-            async function getTips(arch){
-              const globber = await glob.create(`artifacts/mpv-${arch}-[0-9]*.7z`);
-              const files = await globber.glob();
-              if ( files.length > 0 ) {
-                const name = path.basename(files[0]);
-                return `[${name}](https://github.com/${{github.repository}}/releases/download/${{ env.tag_name }}/${name}): ${tips[arch]}\n`
-              } else {
-                return ""
-              }
-            }
-            for(const arch of Object.keys(tips)){
-              note += await getTips(arch);
-            }
-            note+="**Downloads**: ![downloads](https://img.shields.io/github/downloads/${{github.repository}}/${{ env.tag_name }}/total?cacheSeconds=300)";
             core.setOutput("note",note);
 
-            const os = require('os'); 
-            const { basename } = require('path');
-            const { createHash } = require('crypto');
-            const { readFileSync,writeFileSync } = require('fs');
-            const globber = await glob.create([`artifacts/mpv*.7z`].join('\n'));
-            const files = await globber.glob();
-            if ( files.length > 0 ) {
-              let sha256="";
-              for (let file of files) {
-                const buff = readFileSync(file);
-                const hash = createHash("sha256").update(buff).digest("hex");
-                sha256+=`${hash} ${basename(file)}${os.EOL}`;
-              }
-              writeFileSync('sha256.txt', sha256.trim(), { flag: 'w+' });
-            }
 
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "artifacts/mpv*.7z,sha256.txt"
+          artifacts: "artifacts/mpv*.7z"
           commit: version
           name: "${{ env.long_time }}"
           body: "${{ steps.note.outputs.note }}"

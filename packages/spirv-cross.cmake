@@ -20,9 +20,9 @@ ExternalProject_Add(spirv-cross
         -DSPIRV_CROSS_ENABLE_REFLECT=OFF
         -DSPIRV_CROSS_ENABLE_UTIL=OFF
         -DCMAKE_CXX_FLAGS='${CMAKE_CXX_FLAGS}'
-    BUILD_COMMAND ${EXEC} ninja -C <BINARY_DIR>
+    BUILD_COMMAND ${EXEC} ninja
           COMMAND ${EXEC} llvm-lib /out:libspirv-cross-c.a libspirv-cross-{c,core,glsl,hlsl}.a
-    INSTALL_COMMAND ${EXEC} ninja -C <BINARY_DIR> install
+    INSTALL_COMMAND ${EXEC} ninja install
             COMMAND ${CMAKE_COMMAND} -E create_symlink ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/spirv-cross-c.pc
                                                        ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/spirv-cross-c-shared.pc
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1

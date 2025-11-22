@@ -35,7 +35,7 @@ ExternalProject_Add(shaderc
                   -DSPIRV_TOOLS_LIBRARY_TYPE=STATIC
                   -DMINGW_COMPILER_PREFIX=${TARGET_ARCH}
                   -DCMAKE_CXX_FLAGS='${CMAKE_CXX_FLAGS}'
-    BUILD_COMMAND ${EXEC} LTO_JOB=1 ninja -C <BINARY_DIR>
+    BUILD_COMMAND ${EXEC} LTO_JOB=1 ninja
           COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/libshaderc/include/shaderc ${MINGW_INSTALL_PREFIX}/include/shaderc
           COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/libshaderc/libshaderc_combined.a ${MINGW_INSTALL_PREFIX}/lib/libshaderc_combined.a
           COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/shaderc_combined.pc ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/shaderc.pc

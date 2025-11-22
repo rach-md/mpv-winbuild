@@ -40,11 +40,13 @@ jobs:
           ref: main
       - name: Restore source cache
         uses: actions/cache/restore@main
+        if: ${{ false }}
         with:
           path: src_packages
           key: cached_source
       - name: Restore build cache
         uses: actions/cache/restore@main
+        if: ${{ false }}
         with:
           path: build
           key: cached_build
@@ -190,11 +192,13 @@ jobs:
           "https://api.github.com/repos/${{ github.repository }}/actions/caches?key=cached_build&ref=${{ github.ref }}"
       - name: Save source cache
         uses: actions/cache/save@main
+        if: ${{ false }}
         with:
           path: src_packages
           key: cached_source
       - name: Save build cache
         uses: actions/cache/save@main
+        if: ${{ false }}
         with:
           path: build
           key: cached_build

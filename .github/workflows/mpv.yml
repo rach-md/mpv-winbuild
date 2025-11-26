@@ -48,8 +48,6 @@ jobs:
   build_mpv:
     name: Build mpv
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/archlinux/archlinux:base-devel
     outputs:
       sha: ${{ steps.get_sha.outputs.sha }}
     continue-on-error: true
@@ -68,12 +66,9 @@ jobs:
             core.setOutput('sha', String(commit.data.sha))
       - name: Install Dependencies
         run: |
-          sudo tee -a /etc/pacman.conf >/dev/null
-          sudo pacman-key --init
-          sudo pacman-key --populate archlinux
-          sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git ninja cmake meson unzip nasm rst2pdf mimalloc ccache python-pip 7zip
-          sudo python -m pip install --break-system-packages roman
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y nasm ccache libmimalloc-dev
+          pip install --user meson rst2pdf
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global pull.rebase true
@@ -522,15 +517,9 @@ jobs:
     needs: [build_mpv]
     if: ${{ inputs.no_save_cache != true }}
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/archlinux/archlinux:base-devel
     continue-on-error: true
 
     steps:
-      - name: Prepare
-        run: |
-          sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git
       - uses: actions/checkout@v6
 
       - name: Resave Toolchain Cache
@@ -567,15 +556,9 @@ jobs:
     needs: [build_mpv]
     if: ${{ inputs.no_save_cache != true && inputs.compiler =='clang' }}
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/archlinux/archlinux:base-devel
     continue-on-error: true
 
     steps:
-      - name: Prepare
-        run: |
-          sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git
       - uses: actions/checkout@v6
       
       - name: Resave llvm cache

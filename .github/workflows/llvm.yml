@@ -44,8 +44,6 @@ jobs:
   build_llvm:
     name: Build LLVM
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/archlinux/archlinux:base-devel
     steps:
       - name: Generate cache suffix
         id: suffix
@@ -54,10 +52,8 @@ jobs:
           echo "cache_suffix=$cache_suffix" >> "$GITHUB_OUTPUT"
       - name: Install Dependencies
         run: |
-          sudo pacman-key --init
-          sudo pacman-key --populate archlinux
-          sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git ninja cmake python mimalloc go 7zip unzip
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libmimalloc-dev
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global pull.rebase true

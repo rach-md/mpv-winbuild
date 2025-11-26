@@ -148,7 +148,7 @@ jobs:
           sudo pacman-key --init
           sudo pacman-key --populate archlinux
           sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git ninja cmake meson clang lld libc++ unzip ragel yasm nasm gperf rst2pdf python-cairo curl wget mimalloc ccache python-pip 7zip
+          sudo pacman -S --noconfirm --needed git ninja cmake meson unzip nasm rst2pdf mimalloc ccache python-pip 7zip
           sudo python -m pip install --break-system-packages roman
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -616,7 +616,7 @@ jobs:
       - name: Prepare
         run: |
           sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git curl
+          sudo pacman -S --noconfirm --needed git
       - uses: actions/checkout@v6
 
       - name: Resave Toolchain Cache
@@ -661,7 +661,7 @@ jobs:
       - name: Prepare
         run: |
           sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git curl
+          sudo pacman -S --noconfirm --needed git
       - uses: actions/checkout@v6
       
       - name: Resave llvm cache

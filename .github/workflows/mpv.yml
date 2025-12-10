@@ -14,37 +14,25 @@ on:
       release:
         description: "Publish a release"
         required: false
-        default: true
+        default: false
         type: boolean
 
 jobs:
-  build_mpv:
-    name: Build mpv
+  build_qjs:
+    name: Build qjs
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: actions/checkout@main
-      - name: Restore source cache
-        uses: actions/cache/restore@main
         with:
-          path: src_packages
-          key: cached_source
-      - name: Restore build cache
-        uses: actions/cache/restore@main
-        with:
-          path: build
-          key: cached_build
+          ref: qjs
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y ccache nasm libmimalloc2.0
-          pip install --user meson rst2pdf
-          rustup target add x86_64-pc-windows-gnullvm
           mkdir -p llvm build/install
           url=$(curl -sL \
                      -H "Accept: application/vnd.github+json" \
                      -H "X-GitHub-Api-Version: 2022-11-28" \
-                     https://api.github.com/repos/mstorsjo/llvm-mingw/releases/latest \
+                     https://api.github.com/repos/mstorsjo/llvm-mingw/releases/tags/nightly \
                      | jq -r '.assets[] | select(.browser_download_url | match("ucrt-ubuntu.*x86_64")) | .browser_download_url')
           echo "Downloading & installing llvm-mingw"
           curl -sLO $url && echo "llvm-mingw is successfully downloaded "
@@ -61,26 +49,8 @@ jobs:
 
           ninja -C $PWD/build download || true
           ninja -C $PWD/build update
-          ninja -C $PWD/build mpv-fullclean
-          ninja -C $PWD/build mpv
-          if [ -n "$(find $PWD/build -maxdepth 1 -type d -name "mpv" -print -quit)" ] ; then
-              echo "Successfully compiled mpv. Continue"
-          else
-              echo "Failed compiled mpv. Stop"
-              exit 1
-          fi
-
-          mv $PWD/build/mpv $PWD/release
-          cd $PWD/release
-          for dir in ./mpv; do
-              if [ -d $dir ]; then
-                  7z a -m0=lzma2 -mx=9 -ms=on mpv.7z $dir/* -x!*.7z
-                  rm -rf $dir
-              fi
-          done
-          cd ..
-          sudo rm -rf $PWD/build/mpv
-          sudo chmod -R a+rwx $PWD/build
+          ninja -C $PWD/build qjs-fullclean
+          ninja -C $PWD/build qjs
       - name: Collect logs
         if: ${{ always() }}
         run: |
@@ -91,11 +61,13 @@ jobs:
         with:
           name: logs
           path: logs.7z
-      - name: Upload mpv
+      - name: Upload qjs
         uses: actions/upload-artifact@main
         with:
-          name: mpv
-          path: release/mpv.7z
+          name: qjs
+          path: |
+            build/qjs/qjs.exe
+            build/qjs/libwinpthread-1.dll
       - name: Job summary
         uses: actions/github-script@main
         continue-on-error: true
@@ -153,103 +125,8 @@ jobs:
             
             const exec_path = path.join(rootdir,'build','exec');
             const clang_version = (await myExec(`${exec_path}`,["clang","--version"])).split('\n')[0];
-            const rustc_version = (await myExec(`${exec_path}`,["rustc","--version"]));
 
             core.summary
               .addRaw(`Compiler:`,true)
-              .addRaw(`${clang_version}`,true)
-              .addRaw(`${rustc_version}`,true);
+              .addRaw(`${clang_version}`,true);
             await core.summary.addDetails('Packages Version',packages_table).write();
-      - name: Delete previous source and build cache
-        run : |
-          curl -L \
-          -X DELETE \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${{ github.token }}" \
-          -H "X-GitHub-Api-Version: 2022-11-28" \
-          "https://api.github.com/repos/${{ github.repository }}/actions/caches?key=cached_source&ref=${{ github.ref }}"
-
-          curl -L \
-          -X DELETE \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${{ github.token }}" \
-          -H "X-GitHub-Api-Version: 2022-11-28" \
-          "https://api.github.com/repos/${{ github.repository }}/actions/caches?key=cached_build&ref=${{ github.ref }}"
-      - name: Save source cache
-        uses: actions/cache/save@main
-        with:
-          path: src_packages
-          key: cached_source
-      - name: Save build cache
-        uses: actions/cache/save@main
-        with:
-          path: build
-          key: cached_build
-
-  publish_release:
-    name: Publish release
-    needs: [build_mpv]
-    if: ${{ inputs.release == true }}
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      attestations: write
-      contents: write
-    steps:
-      - uses: actions/checkout@main
-      - name: Download artifacts
-        uses: actions/download-artifact@main
-        with:
-          path: artifacts
-          pattern: 'mpv*'
-      - name: Check artifacts
-        uses: actions/github-script@main
-        with:
-          script: |
-            const globber = await glob.create(`artifacts/mpv.7z`);
-            const files = await globber.glob();
-            if ( files.length == 0 ) {
-              core.setFailed("Artifact does not exist!");
-            }
-      - name: Get current time
-        run: |
-          echo "long_time=$(date "+%Y-%m-%d %H:%M")" >> $GITHUB_ENV
-      - name: Generate release note
-        id: note
-        uses: actions/github-script@main
-        with:
-          script: |
-            let note = ``;
-            note+="**Build Time**: ${{ env.long_time }}\n";
-            note+="**Build Details**: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}\n";
-            core.setOutput("note",note);
-      - name: Prepare release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run:  |
-          gh release delete mpv --cleanup-tag || true
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag mpv
-      - name: Create release
-        uses: ncipollo/release-action@main
-        with:
-          artifacts: "artifacts/mpv*.7z"
-          name: "mpv"
-          body: "${{ steps.note.outputs.note }}"
-          tag: "mpv"
-          allowUpdates: true
-          artifactErrorsFailBuild: true
-          prerelease: false
-          makeLatest: true
-      - name: Attest
-        uses: actions/attest-build-provenance@main
-        continue-on-error: true
-        with:
-          subject-path: 'artifacts/*.7z'
-      - name: Prune old releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git checkout main
-          bash prunetags.sh

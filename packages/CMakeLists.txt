@@ -1,35 +1,6 @@
 set_property(DIRECTORY PROPERTY EP_STEP_TARGETS download)
 list(APPEND ep
-    xz
-    uchardet
-    zlib
-    zstd
-    libjpeg
-    lcms2
-    libiconv
-    luajit
-    fribidi
-    brotli
-    freetype2
-    harfbuzz
-    libunibreak
-    libass
-    subrandr
-    xxhash
-    dav1d
-    libarchive
-    highway
-    libjxl
-    spirv-headers
-    spirv-tools
-    spirv-cross
-    glslang
-    vulkan-header
-    shaderc
-    fast_float
-    libplacebo
-    ffmpeg
-    mpv
+    qjs
 )
 foreach(package IN LISTS ep)
     if(NOT ${SINGLE_SOURCE_LOCATION} STREQUAL "")

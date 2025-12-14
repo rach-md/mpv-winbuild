@@ -35,11 +35,13 @@ jobs:
           git config --global fetch.prune true
       - name: Restore source cache
         uses: actions/cache/restore@main
+        if: ${{ false }}
         with:
           path: src_packages
           key: cached_source
       - name: Restore build cache
         uses: actions/cache/restore@main
+        if: ${{ false }}
         with:
           path: build
           key: cached_build
@@ -48,12 +50,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y ccache nasm libmimalloc2.0
           pip install --user meson rst2pdf
+          rustup default nightly
           rustup target add x86_64-pc-windows-gnullvm
           mkdir -p llvm build/install
           url=$(curl -sL \
                      -H "Accept: application/vnd.github+json" \
                      -H "X-GitHub-Api-Version: 2022-11-28" \
-                     https://api.github.com/repos/mstorsjo/llvm-mingw/releases/latest \
+                     https://api.github.com/repos/mstorsjo/llvm-mingw/releases/tags/nightly \
                      | jq -r '.assets[] | select(.browser_download_url | match("ucrt-ubuntu.*x86_64")) | .browser_download_url')
           echo "Downloading & installing llvm-mingw"
           curl -sLO $url && echo "llvm-mingw is successfully downloaded "
@@ -170,6 +173,7 @@ jobs:
               .addRaw(`${rustc_version}`,true);
             await core.summary.addDetails('Packages Version',packages_table).write();
       - name: Delete previous source and build cache
+        if: ${{ false }}
         run : |
           curl -L \
           -X DELETE \
@@ -186,11 +190,13 @@ jobs:
           "https://api.github.com/repos/${{ github.repository }}/actions/caches?key=cached_build&ref=${{ github.ref }}"
       - name: Save source cache
         uses: actions/cache/save@main
+        if: ${{ false }}
         with:
           path: src_packages
           key: cached_source
       - name: Save build cache
         uses: actions/cache/save@main
+        if: ${{ false }}
         with:
           path: build
           key: cached_build
